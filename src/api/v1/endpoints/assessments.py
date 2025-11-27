@@ -48,105 +48,6 @@ async def create_session_with_results(
 
     return new_session
 
-@router.get("/sessions/{session_id}", response_model=PhysicalAssessmentSessionResponse)
-def get_session(
-    session_id: int,
-    current_user: User = Depends(require_view_sessions),
-    db: Session = Depends(get_db)
-):
-    session_model = PhysicalAssessmentService.get_session_model(db, session_id)
-    if not session_model:
-        raise HTTPException(status_code=404, detail="Session not found")
-    
-    if current_user.role == UserRole.COACH:
-        coach_profile = getattr(current_user, "coach_profile", None)
-        if not coach_profile:
-            raise HTTPException(status_code=403, detail="Access denied")
-        batch_coach_id = session_model.batch.coach_id if session_model.batch else None
-        if session_model.coach_id != coach_profile.id and batch_coach_id != coach_profile.id:
-            raise HTTPException(status_code=403, detail="Access denied")
-
-    return PhysicalAssessmentService.serialize_session(db, session_model)
-
-@router.put("/sessions/{session_id}", response_model=PhysicalAssessmentSessionResponse, openapi_extra={"requestBody": {"content": {"application/json": {"schema": PhysicalAssessmentSessionUpdate.model_json_schema()}}, "required": True}})
-async def update_session(
-    session_id: int,
-    request: Request,
-    current_user: User = Depends(require_edit_sessions),
-    db: Session = Depends(get_db)
-):
-    session_data = await parse_request(request, PhysicalAssessmentSessionUpdate)
-    # Check ownership if coach
-    session_model = PhysicalAssessmentService.get_session_model(db, session_id)
-    if not session_model:
-        raise HTTPException(status_code=404, detail="Session not found")
-        
-    if current_user.role == UserRole.COACH:
-        coach_profile = getattr(current_user, "coach_profile", None)
-        if not coach_profile:
-            raise HTTPException(status_code=403, detail="Access denied")
-        batch_coach_id = session_model.batch.coach_id if session_model.batch else None
-        if session_model.coach_id != coach_profile.id and batch_coach_id != coach_profile.id:
-            raise HTTPException(status_code=403, detail="Access denied")
-
-    updated_session = PhysicalAssessmentService.update_session(db, session_id, session_data)
-    if not updated_session:
-        raise HTTPException(status_code=404, detail="Session not found")
-    return updated_session
-
-@router.put("/results/{result_id}", response_model=PhysicalAssessmentResultResponse, openapi_extra={"requestBody": {"content": {"application/json": {"schema": PhysicalAssessmentResultUpdate.model_json_schema()}}, "required": True}})
-async def update_result(
-    result_id: int,
-    request: Request,
-    current_user: User = Depends(require_edit_sessions),
-    db: Session = Depends(get_db)
-):
-    result_data = await parse_request(request, PhysicalAssessmentResultUpdate)
-    
-    # Check access
-    result = PhysicalAssessmentService.get_result(db, result_id)
-    if not result:
-        raise HTTPException(status_code=404, detail="Result not found")
-    
-    session_model = PhysicalAssessmentService.get_session_model(db, result.session_id)
-    if not session_model:
-        # Should not happen if integrity is maintained
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    if current_user.role == UserRole.COACH:
-        coach_profile = getattr(current_user, "coach_profile", None)
-        if not coach_profile:
-            raise HTTPException(status_code=403, detail="Access denied")
-        batch_coach_id = session_model.batch.coach_id if session_model.batch else None
-        if session_model.coach_id != coach_profile.id and batch_coach_id != coach_profile.id:
-            raise HTTPException(status_code=403, detail="Access denied")
-    
-    updated_result = PhysicalAssessmentService.update_result(db, result_id, result_data)
-    if not updated_result:
-        raise HTTPException(status_code=404, detail="Result not found")
-    return updated_result
-
-@router.get("/sessions/{session_id}/results", response_model=list[PhysicalAssessmentResultResponse])
-def get_results(
-    session_id: int,
-    current_user: User = Depends(require_view_sessions),
-    db: Session = Depends(get_db)
-):
-    # Check access
-    session_model = PhysicalAssessmentService.get_session_model(db, session_id)
-    if not session_model:
-        raise HTTPException(status_code=404, detail="Session not found")
-    
-    if current_user.role == UserRole.COACH:
-        coach_profile = getattr(current_user, "coach_profile", None)
-        if not coach_profile:
-            raise HTTPException(status_code=403, detail="Access denied")
-        batch_coach_id = session_model.batch.coach_id if session_model.batch else None
-        if session_model.coach_id != coach_profile.id and batch_coach_id != coach_profile.id:
-             raise HTTPException(status_code=403, detail="Access denied")
-
-    return PhysicalAssessmentService.get_results_by_session(db, session_id)
-
 @router.get("/sessions/pre-create", response_model=PreCreateResponse)
 def get_pre_create_data(
     current_user: User = Depends(require_add_sessions),
@@ -174,5 +75,25 @@ def get_coach_view_sessions(
         raise HTTPException(status_code=403, detail="Coach profile not found")
         
     return PhysicalAssessmentService.get_coach_view_sessions(db, coach_profile.id)
+
+@router.get("/sessions/{session_id}", response_model=PhysicalAssessmentSessionResponse)
+def get_session(
+    session_id: int,
+    current_user: User = Depends(require_view_sessions),
+    db: Session = Depends(get_db)
+):
+    session_model = PhysicalAssessmentService.get_session_model(db, session_id)
+    if not session_model:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    if current_user.role == UserRole.COACH:
+        coach_profile = getattr(current_user, "coach_profile", None)
+        if not coach_profile:
+            raise HTTPException(status_code=403, detail="Access denied")
+        batch_coach_id = session_model.batch.coach_id if session_model.batch else None
+        if session_model.coach_id != coach_profile.id and batch_coach_id != coach_profile.id:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+    return PhysicalAssessmentService.serialize_session(db, session_model)
 
 

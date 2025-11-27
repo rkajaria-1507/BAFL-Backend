@@ -13,7 +13,7 @@ from src.core.logging import db_logger
 engine = create_engine(
     settings.DATABASE_URL,
     connect_args={"check_same_thread": False} if "sqlite" in settings.DATABASE_URL else {},
-    echo=settings.DEBUG,
+    echo=False,
     pool_pre_ping=True
 )
 
