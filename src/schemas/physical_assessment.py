@@ -59,11 +59,13 @@ class PhysicalAssessmentSessionUpdate(BaseModel):
     batch_id: Optional[int] = None
     date_of_session: Optional[date] = None
     student_count: Optional[int] = None
+    results: Optional[List[PhysicalAssessmentResultInput]] = None
 
 class PhysicalAssessmentSessionResponse(PhysicalAssessmentSessionBase):
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
+    coach_name: Optional[str] = None
     batch: Optional[BatchSummary] = None
     school: Optional[SchoolResponse] = None
     batch_schedule: List[BatchScheduleItem] = Field(default_factory=list)

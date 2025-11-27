@@ -112,4 +112,69 @@ def get_session(
 
     return PhysicalAssessmentService.serialize_session(db, session_model)
 
+@router.put("/sessions/{session_id}", response_model=PhysicalAssessmentSessionResponse)
+def update_session(
+    session_id: int,
+    payload: PhysicalAssessmentSessionUpdate,
+    current_user: User = Depends(require_edit_sessions),
+    db: Session = Depends(get_db)
+):
+    api_logger.info(f"Updating session {session_id}. User: {current_user.username}")
+    
+    # Check permissions/ownership if needed (similar to get_session)
+    session_model = PhysicalAssessmentService.get_session_model(db, session_id)
+    if not session_model:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if current_user.role == UserRole.COACH:
+        coach_profile = getattr(current_user, "coach_profile", None)
+        if not coach_profile:
+            raise HTTPException(status_code=403, detail="Access denied")
+        # Coach can only update their own sessions or sessions for their batches
+        batch_coach_id = session_model.batch.coach_id if session_model.batch else None
+        if session_model.coach_id != coach_profile.id and batch_coach_id != coach_profile.id:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+    try:
+        updated_session = PhysicalAssessmentService.update_session(db, session_id, payload)
+        api_logger.info(f"Successfully updated session {session_id}")
+        return updated_session
+    except HTTPException:
+        raise
+    except Exception as e:
+        api_logger.error(f"Failed to update session {session_id}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail={"code": "server_error", "message": str(e)})
+
+@router.delete("/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_session(
+    session_id: int,
+    current_user: User = Depends(require_edit_sessions),
+    db: Session = Depends(get_db)
+):
+    api_logger.info(f"Deleting session {session_id}. User: {current_user.username}")
+    
+    session_model = PhysicalAssessmentService.get_session_model(db, session_id)
+    if not session_model:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if current_user.role == UserRole.COACH:
+        coach_profile = getattr(current_user, "coach_profile", None)
+        if not coach_profile:
+            raise HTTPException(status_code=403, detail="Access denied")
+        batch_coach_id = session_model.batch.coach_id if session_model.batch else None
+        if session_model.coach_id != coach_profile.id and batch_coach_id != coach_profile.id:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+    try:
+        success = PhysicalAssessmentService.delete_session(db, session_id)
+        if not success:
+             raise HTTPException(status_code=404, detail="Session not found")
+        api_logger.info(f"Successfully deleted session {session_id}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        api_logger.error(f"Failed to delete session {session_id}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail={"code": "server_error", "message": str(e)})
+    return None
+
 

@@ -101,6 +101,7 @@ class PhysicalAssessmentService:
         return PhysicalAssessmentSessionResponse(
             id=session.id,
             coach_id=session.coach_id,
+            coach_name=session.coach.name,
             school_id=session.school_id,
             batch_id=session.batch_id,
             date_of_session=session.date_of_session,
@@ -384,23 +385,82 @@ class PhysicalAssessmentService:
         session_id: int,
         session_data: PhysicalAssessmentSessionUpdate,
     ) -> PhysicalAssessmentSessionResponse | None:
-        session = PhysicalSessionRepository.get_by_id(db, session_id)
-        if not session:
-            return None
-        payload = session_data.model_dump(exclude_unset=True)
-        if not payload:
+        try:
+            session = PhysicalSessionRepository.get_by_id(db, session_id)
+            if not session:
+                return None
+                
+            payload = session_data.model_dump(exclude_unset=True)
+            results_data = payload.pop("results", None)
+
+            # Update Session
+            if payload:
+                refs = PhysicalAssessmentService._resolve_relationships(
+                    db,
+                    coach_id=payload.get("coach_id", session.coach_id),
+                    school_id=payload.get("school_id", session.school_id),
+                    batch_id=payload.get("batch_id", session.batch_id),
+                )
+                payload["coach_id"] = refs["coach_id"]
+                payload["school_id"] = refs["school_id"]
+                
+                for key, value in payload.items():
+                    setattr(session, key, value)
+
+            # Update Results
+            if results_data:
+                existing_results = {r.student_id: r for r in session.results}
+                numeric_fields = [
+                    "curl_up", "push_up", "sit_and_reach", "walk_600m", 
+                    "dash_50m", "bow_hold", "plank"
+                ]
+                
+                for res_input in results_data:
+                    student_id = res_input.get("student_id")
+                    if student_id in existing_results:
+                        result_obj = existing_results[student_id]
+                        
+                        for field in numeric_fields:
+                            if field in res_input:
+                                val = res_input[field]
+                                if val is None:
+                                    val = 0.0 if field in ["sit_and_reach", "walk_600m", "dash_50m", "bow_hold", "plank"] else 0
+                                setattr(result_obj, field, val)
+                        
+                        if "discipline" in res_input:
+                            result_obj.discipline = res_input["discipline"]
+                        
+                        # Recalculate is_present based on values
+                        values = [getattr(result_obj, field) for field in numeric_fields]
+                        result_obj.is_present = any(value for value in values)
+                        
+                        # Allow explicit override if provided
+                        if "is_present" in res_input:
+                            result_obj.is_present = res_input["is_present"]
+
+            db.commit()
+            db.refresh(session)
             return PhysicalAssessmentService.serialize_session(db, session)
 
-        refs = PhysicalAssessmentService._resolve_relationships(
-            db,
-            coach_id=payload.get("coach_id", session.coach_id),
-            school_id=payload.get("school_id", session.school_id),
-            batch_id=payload.get("batch_id", session.batch_id),
-        )
-        payload["coach_id"] = refs["coach_id"]
-        payload["school_id"] = refs["school_id"]
-        updated = PhysicalSessionRepository.update(db, session, payload)
-        return PhysicalAssessmentService.serialize_session(db, updated)
+        except HTTPException:
+            db.rollback()
+            raise
+        except Exception:
+            db.rollback()
+            raise
+
+    @staticmethod
+    def delete_session(db: Session, session_id: int) -> bool:
+        session = PhysicalSessionRepository.get_by_id(db, session_id)
+        if not session:
+            return False
+        try:
+            db.delete(session)
+            db.commit()
+            return True
+        except Exception:
+            db.rollback()
+            raise
 
     @staticmethod
     def update_result(
