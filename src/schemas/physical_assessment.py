@@ -43,7 +43,6 @@ class PhysicalAssessmentSessionBase(BaseModel):
     school_id: Optional[int] = None
     batch_id: Optional[int] = None
     date_of_session: date
-    time_of_session: Optional[time] = None
     student_count: int
 
 class PhysicalAssessmentSessionCreate(PhysicalAssessmentSessionBase):
@@ -82,7 +81,6 @@ class PhysicalAssessmentSessionAdminView(BaseModel):
     coach_id: Optional[int] = None
     coach_name: Optional[str] = None
     date_of_session: date
-    time_of_session: Optional[time] = None
 
 class PhysicalAssessmentSessionAdminViewResponse(BaseModel):
     sessions: List[PhysicalAssessmentSessionAdminView]

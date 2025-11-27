@@ -54,6 +54,7 @@ def assign_permission(
     if payload.user_id is not None:
         target_user = UserService.get_user_by_id(db, payload.user_id)
         if not PermissionService.can_manage_permissions(db, current_user, target_user):
+            api_logger.warning(f"User {current_user.username} attempted to assign permission to {target_user.username} without authorization")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You do not have permission to manage this user's permissions",
@@ -68,8 +69,10 @@ def assign_permission(
     else:
         coach = CoachRepository.get_by_id(db, payload.coach_id)
         if not coach:
+            api_logger.warning(f"Coach not found for permission assignment. Coach ID: {payload.coach_id}")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Coach not found")
         if current_user.role != UserRole.ADMIN:
+            api_logger.warning(f"Non-admin user {current_user.username} attempted to assign permission to coach {coach.name}")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only admins can manage coach permissions",
@@ -81,6 +84,8 @@ def assign_permission(
             coach_id=payload.coach_id,
         )
         target_label = f"coach {payload.coach_id}"
+
+    api_logger.info(f"Permission {payload.permission_id} assigned to {target_label} by {current_user.username}")
 
     if payload.assigned_by and payload.assigned_by != current_user.id:
         api_logger.warning(
@@ -103,6 +108,7 @@ def revoke_permission(
     if payload.user_id is not None:
         target_user = UserService.get_user_by_id(db, payload.user_id)
         if not PermissionService.can_manage_permissions(db, current_user, target_user):
+            api_logger.warning(f"User {current_user.username} attempted to revoke permission from {target_user.username} without authorization")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You do not have permission to manage this user's permissions",
@@ -113,11 +119,14 @@ def revoke_permission(
             revoker=current_user,
             user_id=payload.user_id,
         )
+        target_label = f"user {payload.user_id}"
     else:
         coach = CoachRepository.get_by_id(db, payload.coach_id)
         if not coach:
+            api_logger.warning(f"Coach not found for permission revocation. Coach ID: {payload.coach_id}")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Coach not found")
         if current_user.role != UserRole.ADMIN:
+            api_logger.warning(f"Non-admin user {current_user.username} attempted to revoke permission from coach {coach.name}")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only admins can manage coach permissions",
@@ -128,5 +137,8 @@ def revoke_permission(
             revoker=current_user,
             coach_id=payload.coach_id,
         )
+        target_label = f"coach {payload.coach_id}"
+
+    api_logger.info(f"Permission {payload.permission_id} revoked from {target_label} by {current_user.username}")
 
     return MessageResponse(message="Permission revoked.")

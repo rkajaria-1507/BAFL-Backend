@@ -164,12 +164,17 @@ class BatchService:
             school = BatchService._ensure_school(db, payload.school_id)
             update_fields["school_id"] = school.id
 
-        with db.begin():
+        try:
             for field, value in update_fields.items():
                 setattr(batch, field, value)
 
             if payload.schedule is not None:
                 BatchService._sync_schedule(db, batch, payload.schedule)
+            
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
 
         db.refresh(batch)
         if school is None:
@@ -181,5 +186,9 @@ class BatchService:
         batch = BatchRepository.get_by_id(db, batch_id)
         if not batch:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Batch not found")
-        with db.begin():
+        try:
             db.delete(batch)
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise

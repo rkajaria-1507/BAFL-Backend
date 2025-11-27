@@ -47,6 +47,7 @@ def perform_login(username: str, password: str, db: Session) -> LoginResponse:
     identity = AuthService.authenticate_user(db, username, password)
 
     if not identity:
+        api_logger.warning(f"Login failed for username: {username} - Incorrect credentials")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -56,7 +57,7 @@ def perform_login(username: str, password: str, db: Session) -> LoginResponse:
     principal_type, principal = identity
     access_token, refresh_token = AuthService.create_tokens(db, principal_type, principal)
 
-    api_logger.info(f"Login successful for user: {username}")
+    api_logger.info(f"Login successful for user: {username} (Type: {principal_type})")
 
     if principal_type == "user" and isinstance(principal, User):
         return LoginUserResponse(

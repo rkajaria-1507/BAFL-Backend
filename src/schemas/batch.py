@@ -14,7 +14,10 @@ class BatchScheduleEntry(BaseModel):
 
     @field_validator("start_time", "end_time")
     @classmethod
-    def validate_time_format(cls, v: str) -> str:
+    def validate_time_format(cls, v: str | time) -> str | time:
+        if isinstance(v, time):
+            return v
+            
         # Allow "HH:MM AM/PM" or "HH:MM" (24h fallback if user sends it, but prefer 12h)
         # Regex for 12-hour format: (0[1-9]|1[0-2]):[0-5][0-9] ?[AP]M
         match_12h = re.match(r"^(0?[1-9]|1[0-2]):([0-5][0-9]) ?([AP]M)$", v, re.IGNORECASE)

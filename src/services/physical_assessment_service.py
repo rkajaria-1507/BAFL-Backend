@@ -104,7 +104,6 @@ class PhysicalAssessmentService:
             school_id=session.school_id,
             batch_id=session.batch_id,
             date_of_session=session.date_of_session,
-            time_of_session=session.time_of_session,
             student_count=session.student_count,
             created_at=session.created_at,
             updated_at=session.updated_at,
@@ -325,42 +324,44 @@ class PhysicalAssessmentService:
             results_to_insert.append(record)
 
         try:
-            with db.begin():
-                new_session = PhysicalAssessmentSession(
-                    coach_id=refs["coach_id"],
-                    school_id=refs["school_id"],
-                    batch_id=payload.batch_id,
-                    date_of_session=payload.date_of_session,
-                    student_count=len(actual_batch_student_ids),
-                )
-                db.add(new_session)
-                db.flush()
+            new_session = PhysicalAssessmentSession(
+                coach_id=refs["coach_id"],
+                school_id=refs["school_id"],
+                batch_id=payload.batch_id,
+                date_of_session=payload.date_of_session,
+                student_count=len(actual_batch_student_ids),
+            )
+            db.add(new_session)
+            db.flush()
 
-                for result in results_to_insert:
-                    result["session_id"] = new_session.id
+            for result in results_to_insert:
+                result["session_id"] = new_session.id
 
-                if results_to_insert:
-                    db.execute(insert(PhysicalAssessmentDetail), results_to_insert)
+            if results_to_insert:
+                db.execute(insert(PhysicalAssessmentDetail), results_to_insert)
 
-                db.refresh(new_session)
-
-            if invalid_ids and admin_override and is_admin:
-                api_logger.info(
-                    "Admin override by user %s for batch %s invalid student_ids=%s",
-                    getattr(current_user, "id", "unknown"),
-                    payload.batch_id,
-                    invalid_ids,
-                )
-
-            refreshed = PhysicalSessionRepository.get_by_id(db, new_session.id)
-            if refreshed is None:
-                refreshed = new_session
-            return PhysicalAssessmentService.serialize_session(db, refreshed)
-
+            db.commit()
+            db.refresh(new_session)
         except IntegrityError as exc:
             db.rollback()
             db_logger.error("DB integrity error during create_session_with_results: %s", str(exc))
             raise
+        except Exception:
+            db.rollback()
+            raise
+
+        if invalid_ids and admin_override and is_admin:
+            api_logger.info(
+                "Admin override by user %s for batch %s invalid student_ids=%s",
+                getattr(current_user, "id", "unknown"),
+                payload.batch_id,
+                invalid_ids,
+            )
+
+        refreshed = PhysicalSessionRepository.get_by_id(db, new_session.id)
+        if refreshed is None:
+            refreshed = new_session
+        return PhysicalAssessmentService.serialize_session(db, refreshed)
 
     @staticmethod
     def get_session(db: Session, session_id: int) -> PhysicalAssessmentSessionResponse | None:
@@ -475,7 +476,7 @@ class PhysicalAssessmentService:
                 if assignment.coach:
                     coaches_list.append(PreCreateCoach(
                         coach_id=assignment.coach.id,
-                        coach_name=assignment.coach.user.full_name if assignment.coach.user else "Unknown"
+                        coach_name=assignment.coach.name if assignment.coach else None
                     ))
             
             # Students
@@ -507,8 +508,8 @@ class PhysicalAssessmentService:
             coach_name = "Unknown"
             if session.coach_id:
                 coach = CoachRepository.get_by_id(db, session.coach_id)
-                if coach and coach.user:
-                    coach_name = coach.user.full_name
+                if coach:
+                    coach_name = coach.name
             
             view_sessions.append(PhysicalAssessmentSessionAdminView(
                 session_id=session.id,
@@ -519,7 +520,6 @@ class PhysicalAssessmentService:
                 coach_id=session.coach_id,
                 coach_name=coach_name,
                 date_of_session=session.date_of_session,
-                time_of_session=session.time_of_session
             ))
         return PhysicalAssessmentSessionAdminViewResponse(sessions=view_sessions)
 
@@ -543,8 +543,8 @@ class PhysicalAssessmentService:
             coach_name = "Unknown"
             if session.coach_id:
                 coach = CoachRepository.get_by_id(db, session.coach_id)
-                if coach and coach.user:
-                    coach_name = coach.user.full_name
+                if coach:
+                    coach_name = coach.name
             
             view_sessions.append(PhysicalAssessmentSessionAdminView(
                 session_id=session.id,
@@ -555,6 +555,5 @@ class PhysicalAssessmentService:
                 coach_id=session.coach_id,
                 coach_name=coach_name,
                 date_of_session=session.date_of_session,
-                time_of_session=session.time_of_session
             ))
         return PhysicalAssessmentSessionAdminViewResponse(sessions=view_sessions)
