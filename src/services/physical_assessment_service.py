@@ -165,13 +165,28 @@ class PhysicalAssessmentService:
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"Coach with ID {coach_id} not found",
                 )
-            if coach.school_id and school_id and coach.school_id != school_id:
+
+            coach_school_ids = {
+                assignment.school_id
+                for assignment in getattr(coach, "school_assignments", [])
+                if assignment.school_id is not None
+            }
+
+            if school_id is not None and coach_school_ids and school_id not in coach_school_ids:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Coach and school mismatch",
                 )
-            if coach.school_id and school_id is None:
-                school_id = coach.school_id
+
+            if school_id is None:
+                if len(coach_school_ids) == 1:
+                    school_id = next(iter(coach_school_ids))
+                elif coach_school_ids and batch is None:
+                    # Ambiguous without batch context; require explicit school selection
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Coach assigned to multiple schools; specify school_id or batch_id",
+                    )
 
         school = None
         if school_id is not None:

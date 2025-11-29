@@ -88,24 +88,12 @@ def delete_student(
             api_logger.warning(f"Student not found for deletion. Student ID: {student_id}")
             raise HTTPException(status_code=404, detail="Student not found")
         api_logger.info(f"Successfully deleted student {student_id}")
+    except HTTPException:
+        # Let FastAPI propagate 4xx errors cleanly
+        raise
     except Exception as e:
         api_logger.error(f"Failed to delete student {student_id}: {str(e)}", exc_info=True)
         raise
     return None
 
-@router.put("/{student_id}/change-batch", response_model=StudentChangeBatchResponse, openapi_extra={"requestBody": {"content": {"application/json": {"schema": StudentChangeBatchRequest.model_json_schema()}}, "required": True}})
-async def change_student_batch(
-    student_id: int,
-    request: Request,
-    current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db)
-):
-    api_logger.info(f"Changing batch for student {student_id} by user {current_user.username}")
-    try:
-        data = await parse_request(request, StudentChangeBatchRequest)
-        result = StudentService.change_batch(db, student_id, data.new_batch_id)
-        api_logger.info(f"Successfully changed batch for student {student_id} to batch {data.new_batch_id}")
-        return result
-    except Exception as e:
-        api_logger.error(f"Failed to change batch for student {student_id}: {str(e)}", exc_info=True)
-        raise
+# Removed dedicated change-batch endpoint. Use standard PUT with `batch_id`.

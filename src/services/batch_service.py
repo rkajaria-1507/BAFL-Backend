@@ -10,6 +10,7 @@ from src.db.models.batch_schedule import BatchSchedule
 from src.db.models.school import School
 from src.db.repositories.batch_repository import BatchRepository
 from src.db.repositories.school_repository import SchoolRepository
+from src.db.repositories.coach_repository import CoachRepository
 from src.schemas.batch import (
     BatchCreateRequest,
     BatchCreateResponse,
@@ -18,6 +19,9 @@ from src.schemas.batch import (
     BatchScheduleItem,
     BatchScheduleUpdateItem,
     BatchUpdateRequest,
+    BatchPreCreateResponse,
+    BatchPreCreateSchool,
+    BatchPreCreateCoach,
 )
 
 
@@ -192,3 +196,39 @@ class BatchService:
         except Exception:
             db.rollback()
             raise
+
+    @staticmethod
+    def get_batch_pre_create_data(db: Session) -> BatchPreCreateResponse:
+        schools = SchoolRepository.get_all(db, 0, 1000)
+        coaches = CoachRepository.get_all(db, 0, 10000)
+        coaches_by_school: dict[int, list[BatchPreCreateCoach]] = {}
+        for coach in coaches:
+            assignments = getattr(coach, "school_assignments", [])
+            if not assignments:
+                continue
+            for assignment in assignments:
+                school_id = assignment.school_id
+                if school_id is None:
+                    continue
+                coaches_by_school.setdefault(school_id, []).append(
+                    BatchPreCreateCoach(coach_id=coach.id, coach_name=coach.name)
+                )
+
+        school_entries: list[BatchPreCreateSchool] = []
+        for school in schools:
+            school_entries.append(
+                BatchPreCreateSchool(
+                    school_id=school.id,
+                    school_name=school.name,
+                    coaches=sorted(coaches_by_school.get(school.id, []), key=lambda c: c.coach_name.lower())
+                )
+            )
+
+        days = [
+            "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
+        ]
+
+        return BatchPreCreateResponse(
+            schools=sorted(school_entries, key=lambda s: s.school_name.lower()),
+            days_of_week=days,
+        )

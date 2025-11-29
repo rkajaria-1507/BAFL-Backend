@@ -141,3 +141,19 @@ class BatchDetail(BatchSummary):
     schedule: List[BatchScheduleItem] = Field(default_factory=list)
     created_at: datetime
     updated_at: Optional[datetime] = None
+
+
+class BatchPreCreateCoach(BaseModel):
+    coach_id: int
+    coach_name: str
+
+
+class BatchPreCreateSchool(BaseModel):
+    school_id: int
+    school_name: str
+    coaches: List[BatchPreCreateCoach] = Field(default_factory=list)
+
+
+class BatchPreCreateResponse(BaseModel):
+    schools: List[BatchPreCreateSchool] = Field(default_factory=list)
+    days_of_week: List[str] = Field(default_factory=list)

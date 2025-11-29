@@ -10,6 +10,7 @@ from src.schemas.batch import (
     BatchCreateResponse,
     BatchDetail,
     BatchUpdateRequest,
+    BatchPreCreateResponse,
 )
 from src.services.batch_service import BatchService
 
@@ -34,6 +35,14 @@ def create_batch(
     except Exception as e:
         api_logger.error(f"Failed to create batch '{payload.batch_name}': {str(e)}", exc_info=True)
         raise
+    
+@router.get("/pre-create", response_model=BatchPreCreateResponse)
+def get_batch_pre_create(
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    api_logger.info(f"Fetching batch pre-create data. User: {current_user.username} (ID: {current_user.id})")
+    return BatchService.get_batch_pre_create_data(db)
 
 @router.get("/", response_model=list[BatchDetail])
 def get_batches(

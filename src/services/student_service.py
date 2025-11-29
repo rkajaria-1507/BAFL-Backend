@@ -90,7 +90,10 @@ class StudentService:
 
     @staticmethod
     def delete_student(db: Session, student_id: int) -> bool:
-        student = StudentService.get_student(db, student_id)
+        # Do not raise for not found; return False so endpoint can 404
+        student = StudentRepository.get_by_id(db, student_id)
+        if not student:
+            return False
         StudentRepository.delete(db, student)
         return True
 

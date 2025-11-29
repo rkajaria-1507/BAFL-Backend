@@ -30,7 +30,7 @@ def create_coach(
     api_logger.info(f"Creating coach '{payload.name}' by user {current_user.username} (ID: {current_user.id})")
     try:
         details = CoachService.create_coach(db, payload)
-        api_logger.info(f"Successfully created coach '{details.name}' (ID: {details.id})")
+        api_logger.info(f"Successfully created coach '{details.name}' (ID: {details.coach_id})")
         return CoachCreateResponse(message="Coach created successfully", coach=details)
     except Exception as e:
         api_logger.error(f"Failed to create coach '{payload.name}': {str(e)}", exc_info=True)
