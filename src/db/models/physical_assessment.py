@@ -11,7 +11,6 @@ class PhysicalAssessmentSession(Base):
     coach_id = Column(Integer, ForeignKey("coaches.id", ondelete="SET NULL"), nullable=True)
     school_id = Column(Integer, ForeignKey("schools.id", ondelete="SET NULL"), nullable=True)
     date_of_session = Column(Date, nullable=False)
-    time_of_session = Column(Time, nullable=True)
     student_count = Column(Integer, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -34,13 +33,13 @@ class PhysicalAssessmentDetail(Base):
     student_id = Column(Integer, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
     discipline = Column(String(100), nullable=True)
 
-    curl_up = Column(Integer, default=0, nullable=False)
-    push_up = Column(Integer, default=0, nullable=False)
-    sit_and_reach = Column(Float, default=0.0, nullable=False)
-    walk_600m = Column(Float, default=0.0, nullable=False)
-    dash_50m = Column(Float, default=0.0, nullable=False)
-    bow_hold = Column(Float, default=0.0, nullable=False)
-    plank = Column(Float, default=0.0, nullable=False)
+    curl_up = Column(Integer, nullable=True)
+    push_up = Column(Integer, nullable=True)
+    sit_and_reach = Column(Float, nullable=True)
+    walk_600m = Column(Float, nullable=True)
+    dash_50m = Column(Float, nullable=True)
+    bow_hold = Column(Float, nullable=True)
+    plank = Column(Float, nullable=True)
 
     is_present = Column(Boolean, default=False, nullable=False)
 

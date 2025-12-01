@@ -1,6 +1,6 @@
 """Student service with validation and relationship handling."""
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 
 from fastapi import HTTPException, status
 from sqlalchemy import select, delete
@@ -12,7 +12,19 @@ from src.db.repositories.batch_repository import BatchRepository
 from src.db.repositories.physical_results_repository import PhysicalResultsRepository
 from src.db.repositories.physical_session_repository import PhysicalSessionRepository
 from src.db.repositories.student_repository import StudentRepository
-from src.schemas.student import StudentCreate, StudentUpdate
+from src.db.models.batch import Batch
+from src.db.models.school import School
+from src.db.models.coach import Coach
+from src.schemas.student import (
+    StudentCreate,
+    StudentUpdate,
+    StudentPreCreateResponse,
+    StudentPreCreateSchool,
+    StudentPreCreateBatch,
+    StudentPreCreateCoach,
+    StudentPreCreateCoachSchool,
+    StudentPreCreateCoachBatch,
+)
 
 
 class StudentService:
@@ -96,6 +108,79 @@ class StudentService:
             return False
         StudentRepository.delete(db, student)
         return True
+
+    @staticmethod
+    def get_pre_create_data(db: Session) -> StudentPreCreateResponse:
+        school_rows: List[School] = list(db.scalars(select(School)).all())
+        batch_rows: List[Batch] = list(db.scalars(select(Batch)).all())
+        coach_rows: List[Coach] = list(db.scalars(select(Coach)).all())
+
+        school_payload = [
+            StudentPreCreateSchool(school_id=school.id, school_name=school.name)
+            for school in school_rows
+        ]
+        school_payload.sort(key=lambda item: item.school_name.lower())
+
+        batch_payload = []
+        for batch in batch_rows:
+            school = batch.school
+            batch_payload.append(
+                StudentPreCreateBatch(
+                    batch_id=batch.id,
+                    batch_name=batch.batch_name,
+                    school_id=batch.school_id,
+                    school_name=school.name if school else "",
+                )
+            )
+        batch_payload.sort(key=lambda item: (item.school_name.lower(), item.batch_name.lower()))
+
+        coach_payload: List[StudentPreCreateCoach] = []
+        for coach in coach_rows:
+            coach_school_entries: List[StudentPreCreateCoachSchool] = []
+            for assignment in getattr(coach, "school_assignments", []) or []:
+                school = assignment.school
+                if not school:
+                    continue
+                coach_school_entries.append(
+                    StudentPreCreateCoachSchool(
+                        school_id=school.id,
+                        school_name=school.name,
+                    )
+                )
+            coach_school_entries.sort(key=lambda item: item.school_name.lower())
+
+            coach_batch_entries: List[StudentPreCreateCoachBatch] = []
+            for assignment in getattr(coach, "batch_assignments", []) or []:
+                batch = assignment.batch
+                if not batch:
+                    continue
+                school = batch.school
+                coach_batch_entries.append(
+                    StudentPreCreateCoachBatch(
+                        batch_id=batch.id,
+                        batch_name=batch.batch_name,
+                        school_id=school.id if school else batch.school_id,
+                        school_name=school.name if school else "",
+                    )
+                )
+            coach_batch_entries.sort(key=lambda item: (item.school_name.lower(), item.batch_name.lower()))
+
+            coach_payload.append(
+                StudentPreCreateCoach(
+                    coach_id=coach.id,
+                    coach_name=coach.name,
+                    schools=coach_school_entries,
+                    batches=coach_batch_entries,
+                )
+            )
+
+        coach_payload.sort(key=lambda item: item.coach_name.lower())
+
+        return StudentPreCreateResponse(
+            schools=school_payload,
+            batches=batch_payload,
+            coaches=coach_payload,
+        )
 
     @staticmethod
     def change_batch(db: Session, student_id: int, new_batch_id: int) -> Dict[str, Any]:

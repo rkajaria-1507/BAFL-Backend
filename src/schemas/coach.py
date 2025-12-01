@@ -45,3 +45,20 @@ class CoachCreateResponse(BaseModel):
 class CoachUpdateResponse(BaseModel):
     message: str
     coach: CoachContractDetails
+
+
+class CoachPreCreateSchool(BaseModel):
+    school_id: int
+    school_name: str
+
+
+class CoachPreCreateBatch(BaseModel):
+    batch_id: int
+    batch_name: str
+    school_id: int
+    school_name: str
+
+
+class CoachPreCreateResponse(BaseModel):
+    schools: List[CoachPreCreateSchool]
+    batches: List[CoachPreCreateBatch]

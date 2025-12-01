@@ -11,6 +11,7 @@ from src.schemas.coach import (
     CoachCreateResponse,
     CoachUpdateRequest,
     CoachUpdateResponse,
+    CoachPreCreateResponse,
 )
 from src.services.coach_service import CoachService
 
@@ -35,6 +36,14 @@ def create_coach(
     except Exception as e:
         api_logger.error(f"Failed to create coach '{payload.name}': {str(e)}", exc_info=True)
         raise
+
+@router.get("/pre-create", response_model=CoachPreCreateResponse)
+def get_coach_pre_create(
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    api_logger.info(f"Fetching coach pre-create data. User: {current_user.username} (ID: {current_user.id})")
+    return CoachService.get_pre_create_data(db)
 
 @router.get("/", response_model=list[CoachContractDetails])
 def get_coaches(

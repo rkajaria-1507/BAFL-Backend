@@ -3,20 +3,19 @@ from sqlalchemy.orm import Session
 from src.db.database import get_db
 from src.core.logging import api_logger
 from src.schemas.physical_assessment import (
-    PhysicalAssessmentSessionCreate, 
-    PhysicalAssessmentSessionUpdate, 
+    PhysicalAssessmentSessionUpdate,
     PhysicalAssessmentSessionResponse,
-    PhysicalAssessmentResultUpdate,
-    PhysicalAssessmentResultResponse,
     PreCreateResponse,
-    PhysicalAssessmentSessionAdminViewResponse
+    PhysicalAssessmentSessionAdminViewResponse,
+    PhysicalAssessmentSessionWithResultsCreate,
+    PhysicalAssessmentStudentSummaryResponse,
+    PhysicalAssessmentStudentDetailResponse,
+    PhysicalAssessmentStudentUpdate,
 )
-from src.schemas.physical_assessment import PhysicalAssessmentSessionWithResultsCreate
 from src.services.physical_assessment_service import PhysicalAssessmentService
 from src.api.v1.dependencies.auth import get_current_user, require_permission
 from src.db.models.user import User, UserRole
 from src.db.models.permission import PermissionType
-from src.utils.input_parsing import parse_request
 
 router = APIRouter(prefix="/physical", tags=["Physical Assessments"])
 
@@ -25,13 +24,13 @@ require_view_sessions = require_permission(PermissionType.PHYSICAL_SESSIONS_VIEW
 require_edit_sessions = require_permission(PermissionType.PHYSICAL_SESSIONS_EDIT)
 require_add_sessions = require_permission(PermissionType.PHYSICAL_SESSIONS_ADD)
 
-@router.post("/sessions/create-with-results", response_model=PhysicalAssessmentSessionResponse, status_code=status.HTTP_201_CREATED)
-async def create_session_with_results(
+@router.post("/sessions", response_model=PhysicalAssessmentSessionResponse, status_code=status.HTTP_201_CREATED)
+async def create_session(
     payload: PhysicalAssessmentSessionWithResultsCreate,
     current_user: User = Depends(require_add_sessions),
     db: Session = Depends(get_db)
 ):
-    api_logger.info(f"Initiating session creation with results. User: {current_user.username} (ID: {current_user.id}), Batch ID: {payload.batch_id}")
+    api_logger.info(f"Creating physical assessment session. User: {current_user.username} (ID: {current_user.id}), Batch ID: {payload.batch_id}")
     
     # Authorization: coaches can only create for batches they own
     if current_user.role == UserRole.COACH:
@@ -43,7 +42,7 @@ async def create_session_with_results(
 
     try:
         new_session = PhysicalAssessmentService.create_session_with_results(db, payload, current_user)
-        api_logger.info(f"Successfully created session with results. Session ID: {new_session.id}")
+        api_logger.info(f"Successfully created physical assessment session. Session ID: {new_session.id}")
     except HTTPException as e:
         api_logger.warning(f"HTTPException during session creation: {e.detail}")
         raise
@@ -111,6 +110,112 @@ def get_session(
             raise HTTPException(status_code=403, detail="Access denied")
 
     return PhysicalAssessmentService.serialize_session(db, session_model)
+
+@router.get("/students/admin-view", response_model=PhysicalAssessmentStudentSummaryResponse)
+def get_admin_view_students(
+    current_user: User = Depends(require_view_sessions),
+    db: Session = Depends(get_db)
+):
+    api_logger.info(f"Fetching physical assessment students (admin view). User: {current_user.username} (ID: {current_user.id})")
+    return PhysicalAssessmentService.get_admin_view_students(db)
+
+
+@router.get("/students/coach-view", response_model=PhysicalAssessmentStudentSummaryResponse)
+def get_coach_view_students(
+    current_user: User = Depends(require_view_sessions),
+    db: Session = Depends(get_db)
+):
+    api_logger.info(f"Fetching physical assessment students (coach view). User: {current_user.username} (ID: {current_user.id})")
+    if current_user.role != UserRole.COACH:
+        raise HTTPException(status_code=403, detail="Coach access required")
+
+    coach_profile = getattr(current_user, "coach_profile", None)
+    if not coach_profile:
+        raise HTTPException(status_code=403, detail="Coach profile not found")
+
+    return PhysicalAssessmentService.get_coach_view_students(db, coach_profile.id)
+
+
+@router.get("/students/{student_id}", response_model=PhysicalAssessmentStudentDetailResponse)
+def get_student_detail(
+    student_id: int,
+    current_user: User = Depends(require_view_sessions),
+    db: Session = Depends(get_db)
+):
+    api_logger.info(f"Fetching physical assessment student detail. Student ID: {student_id}, User: {current_user.username}")
+    detail = PhysicalAssessmentService.get_student_detail(db, student_id)
+    if not detail:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    if current_user.role == UserRole.COACH:
+        coach_profile = getattr(current_user, "coach_profile", None)
+        if not coach_profile:
+            raise HTTPException(status_code=403, detail="Coach profile not found")
+
+        assigned_batch_ids = {
+            assignment.batch_id
+            for assignment in getattr(coach_profile, "batch_assignments", [])
+            if assignment.batch_id is not None
+        }
+        if detail.batch_id not in assigned_batch_ids:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+    return detail
+
+
+@router.put("/students/{student_id}", response_model=PhysicalAssessmentStudentDetailResponse)
+def update_student_results(
+    student_id: int,
+    payload: PhysicalAssessmentStudentUpdate,
+    current_user: User = Depends(require_edit_sessions),
+    db: Session = Depends(get_db)
+):
+    api_logger.info(f"Updating physical assessment student results. Student ID: {student_id}, User: {current_user.username}")
+
+    if current_user.role == UserRole.COACH:
+        coach_profile = getattr(current_user, "coach_profile", None)
+        if not coach_profile:
+            raise HTTPException(status_code=403, detail="Coach profile not found")
+        assigned_batch_ids = {
+            assignment.batch_id
+            for assignment in getattr(coach_profile, "batch_assignments", [])
+            if assignment.batch_id is not None
+        }
+        detail = PhysicalAssessmentService.get_student_detail(db, student_id)
+        if not detail or detail.batch_id not in assigned_batch_ids:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+    return PhysicalAssessmentService.update_student_results(db, student_id, payload)
+
+@router.delete("/students/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_student_results(
+    student_id: int,
+    current_user: User = Depends(require_edit_sessions),
+    db: Session = Depends(get_db)
+):
+    api_logger.info(f"Deleting physical assessment student results. Student ID: {student_id}, User: {current_user.username}")
+
+    detail = PhysicalAssessmentService.get_student_detail(db, student_id)
+    if not detail:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    if current_user.role == UserRole.COACH:
+        coach_profile = getattr(current_user, "coach_profile", None)
+        if not coach_profile:
+            raise HTTPException(status_code=403, detail="Coach profile not found")
+        assigned_batch_ids = {
+            assignment.batch_id
+            for assignment in getattr(coach_profile, "batch_assignments", [])
+            if assignment.batch_id is not None
+        }
+        if detail.batch_id not in assigned_batch_ids:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+    deleted = PhysicalAssessmentService.delete_student_results(db, student_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="No assessment results to delete")
+
+    return None
 
 @router.put("/sessions/{session_id}", response_model=PhysicalAssessmentSessionResponse)
 def update_session(

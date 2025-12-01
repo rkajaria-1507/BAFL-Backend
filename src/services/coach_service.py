@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Dict, List, Set
 
 from fastapi import HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.core.security import PasswordHandler
@@ -22,6 +23,9 @@ from src.schemas.coach import (
     CoachCreateRequest,
     CoachSchoolAssignment,
     CoachUpdateRequest,
+    CoachPreCreateResponse,
+    CoachPreCreateSchool,
+    CoachPreCreateBatch,
 )
 from src.db.models.user import UserRole
 
@@ -218,6 +222,32 @@ class CoachService:
     def get_coach(db: Session, coach_id: int) -> CoachContractDetails:
         coach = CoachService._get_coach_or_404(db, coach_id)
         return CoachService._build_contract_details(coach)
+
+    @staticmethod
+    def get_pre_create_data(db: Session) -> CoachPreCreateResponse:
+        school_rows: List[School] = list(db.scalars(select(School)).all())
+        batch_rows: List[Batch] = list(db.scalars(select(Batch)).all())
+
+        school_payload = [
+            CoachPreCreateSchool(school_id=school.id, school_name=school.name)
+            for school in school_rows
+        ]
+        school_payload.sort(key=lambda item: item.school_name.lower())
+
+        batch_payload = []
+        for batch in batch_rows:
+            school = batch.school
+            batch_payload.append(
+                CoachPreCreateBatch(
+                    batch_id=batch.id,
+                    batch_name=batch.batch_name,
+                    school_id=batch.school_id,
+                    school_name=school.name if school else "",
+                )
+            )
+        batch_payload.sort(key=lambda item: (item.school_name.lower(), item.batch_name.lower()))
+
+        return CoachPreCreateResponse(schools=school_payload, batches=batch_payload)
 
     @staticmethod
     def update_coach(db: Session, coach_id: int, payload: CoachUpdateRequest) -> CoachContractDetails:

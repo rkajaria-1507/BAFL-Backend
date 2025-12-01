@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 class StudentBase(BaseModel):
@@ -33,3 +33,40 @@ class StudentChangeBatchRequest(BaseModel):
 class StudentChangeBatchResponse(BaseModel):
     message: str
     student: dict
+
+
+class StudentPreCreateSchool(BaseModel):
+    school_id: int
+    school_name: str
+
+
+class StudentPreCreateBatch(BaseModel):
+    batch_id: int
+    batch_name: str
+    school_id: int
+    school_name: str
+
+
+class StudentPreCreateCoachSchool(BaseModel):
+    school_id: int
+    school_name: str
+
+
+class StudentPreCreateCoachBatch(BaseModel):
+    batch_id: int
+    batch_name: str
+    school_id: int
+    school_name: str
+
+
+class StudentPreCreateCoach(BaseModel):
+    coach_id: int
+    coach_name: str
+    schools: List[StudentPreCreateCoachSchool]
+    batches: List[StudentPreCreateCoachBatch]
+
+
+class StudentPreCreateResponse(BaseModel):
+    schools: List[StudentPreCreateSchool]
+    batches: List[StudentPreCreateBatch]
+    coaches: List[StudentPreCreateCoach]

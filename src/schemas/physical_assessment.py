@@ -113,3 +113,45 @@ class PreCreateBatch(BaseModel):
 
 class PreCreateResponse(BaseModel):
     batches: List[PreCreateBatch]
+
+
+class PhysicalAssessmentStudentSummary(BaseModel):
+    student_id: int
+    student_name: str
+    batch_id: Optional[int] = None
+    batch_name: Optional[str] = None
+    school_id: Optional[int] = None
+    school_name: Optional[str] = None
+    total_sessions: int = 0
+    last_session_date: Optional[date] = None
+
+
+class PhysicalAssessmentStudentSummaryResponse(BaseModel):
+    students: List[PhysicalAssessmentStudentSummary] = Field(default_factory=list)
+
+
+class PhysicalAssessmentStudentSessionResult(BaseModel):
+    session_id: int
+    date_of_session: date
+    coach_id: Optional[int] = None
+    coach_name: Optional[str] = None
+    result: PhysicalAssessmentResultResponse
+
+
+class PhysicalAssessmentStudentDetailResponse(BaseModel):
+    student_id: int
+    student_name: str
+    batch_id: Optional[int] = None
+    batch_name: Optional[str] = None
+    school_id: Optional[int] = None
+    school_name: Optional[str] = None
+    sessions: List[PhysicalAssessmentStudentSessionResult] = Field(default_factory=list)
+
+
+class PhysicalAssessmentStudentSessionUpdate(BaseModel):
+    session_id: int
+    result: PhysicalAssessmentResultUpdate
+
+
+class PhysicalAssessmentStudentUpdate(BaseModel):
+    updates: List[PhysicalAssessmentStudentSessionUpdate] = Field(..., min_length=1)

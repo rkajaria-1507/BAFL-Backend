@@ -2,7 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from src.db.database import get_db
 from src.core.logging import api_logger
-from src.schemas.student import StudentCreate, StudentUpdate, StudentResponse, StudentChangeBatchRequest, StudentChangeBatchResponse
+from src.schemas.student import (
+    StudentCreate,
+    StudentUpdate,
+    StudentResponse,
+    StudentChangeBatchRequest,
+    StudentChangeBatchResponse,
+    StudentPreCreateResponse,
+)
 from src.services.student_service import StudentService
 from src.api.v1.dependencies.auth import get_current_user
 from src.db.models.user import User, UserRole
@@ -31,6 +38,14 @@ async def create_student(
     except Exception as e:
         api_logger.error(f"Failed to create student: {str(e)}", exc_info=True)
         raise
+
+@router.get("/pre-create", response_model=StudentPreCreateResponse)
+def get_student_pre_create(
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    api_logger.info(f"Fetching student pre-create data. User: {current_user.username} (ID: {current_user.id})")
+    return StudentService.get_pre_create_data(db)
 
 @router.get("/", response_model=list[StudentResponse])
 def get_students(

@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Dict, Iterable, Sequence, List
 
 from fastapi import HTTPException, status
-from sqlalchemy import insert, select
+from sqlalchemy import insert, select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -11,6 +11,7 @@ from src.db.models.batch import Batch
 from src.db.models.physical_assessment import PhysicalAssessmentDetail, PhysicalAssessmentSession
 from src.db.models.student import Student
 from src.db.models.user import UserRole, User
+from src.db.models.school import School
 from src.db.repositories.batch_repository import BatchRepository
 from src.db.repositories.coach_repository import CoachRepository
 from src.db.repositories.physical_results_repository import PhysicalResultsRepository
@@ -32,6 +33,11 @@ from src.schemas.physical_assessment import (
     PreCreateStudent,
     PhysicalAssessmentSessionAdminViewResponse,
     PhysicalAssessmentSessionAdminView,
+    PhysicalAssessmentStudentSummaryResponse,
+    PhysicalAssessmentStudentSummary,
+    PhysicalAssessmentStudentDetailResponse,
+    PhysicalAssessmentStudentSessionResult,
+    PhysicalAssessmentStudentUpdate,
 )
 from src.db.models.coach import Coach
 from src.db.models.coach_batch import CoachBatch
@@ -310,33 +316,49 @@ class PhysicalAssessmentService:
                 "student_id": int(result.student_id),
                 "discipline": result.discipline,
             }
+            
+            temp_values = {}
             any_nonzero = False
 
             for field in numeric_int_fields:
-                value = getattr(result, field, 0) or 0
-                try:
-                    value = int(value)
-                except (TypeError, ValueError) as exc:
-                    raise ValueError(f"Invalid integer for {field} for student {result.student_id}") from exc
-                if value < 0:
-                    raise ValueError(f"Negative value for {field} for student {result.student_id}")
-                record[field] = value
-                if value:
-                    any_nonzero = True
+                value = getattr(result, field, None)
+                # Handle Pydantic defaults (0) or explicit None
+                if value is not None:
+                    try:
+                        value = int(value)
+                    except (TypeError, ValueError) as exc:
+                        raise ValueError(f"Invalid integer for {field} for student {result.student_id}") from exc
+                    if value < 0:
+                        raise ValueError(f"Negative value for {field} for student {result.student_id}")
+                    if value > 0:
+                        any_nonzero = True
+                temp_values[field] = value
 
             for field in numeric_float_fields:
-                value = getattr(result, field, 0.0) or 0.0
-                try:
-                    value = float(value)
-                except (TypeError, ValueError) as exc:
-                    raise ValueError(f"Invalid float for {field} for student {result.student_id}") from exc
-                if value < 0:
-                    raise ValueError(f"Negative value for {field} for student {result.student_id}")
-                record[field] = round(value, 2)
-                if value:
-                    any_nonzero = True
+                value = getattr(result, field, None)
+                if value is not None:
+                    try:
+                        value = float(value)
+                    except (TypeError, ValueError) as exc:
+                        raise ValueError(f"Invalid float for {field} for student {result.student_id}") from exc
+                    if value < 0:
+                        raise ValueError(f"Negative value for {field} for student {result.student_id}")
+                    value = round(value, 2)
+                    if value > 0:
+                        any_nonzero = True
+                temp_values[field] = value
 
-            record["is_present"] = any_nonzero
+            if not any_nonzero:
+                # Absent: all null
+                record["is_present"] = False
+                for field in numeric_int_fields + numeric_float_fields:
+                    record[field] = None
+            else:
+                # Present: store as is
+                record["is_present"] = True
+                for field in numeric_int_fields + numeric_float_fields:
+                    record[field] = temp_values[field]
+
             results_to_insert.append(record)
 
         try:
@@ -632,3 +654,171 @@ class PhysicalAssessmentService:
                 date_of_session=session.date_of_session,
             ))
         return PhysicalAssessmentSessionAdminViewResponse(sessions=view_sessions)
+
+    @staticmethod
+    def get_admin_view_students(db: Session) -> PhysicalAssessmentStudentSummaryResponse:
+        stmt = (
+            select(
+                Student.id.label("student_id"),
+                Student.name.label("student_name"),
+                Student.batch_id.label("batch_id"),
+                Batch.batch_name.label("batch_name"),
+                Batch.school_id.label("school_id"),
+                School.name.label("school_name"),
+                func.count(func.distinct(PhysicalAssessmentDetail.session_id)).label("total_sessions"),
+                func.max(PhysicalAssessmentSession.date_of_session).label("last_session_date"),
+            )
+            .outerjoin(PhysicalAssessmentDetail, PhysicalAssessmentDetail.student_id == Student.id)
+            .outerjoin(PhysicalAssessmentSession, PhysicalAssessmentSession.id == PhysicalAssessmentDetail.session_id)
+            .outerjoin(Batch, Batch.id == Student.batch_id)
+            .outerjoin(School, School.id == Batch.school_id)
+            .group_by(
+                Student.id,
+                Student.name,
+                Student.batch_id,
+                Batch.batch_name,
+                Batch.school_id,
+                School.name,
+            )
+        )
+        rows = db.execute(stmt).all()
+
+        summaries: List[PhysicalAssessmentStudentSummary] = []
+        for row in rows:
+            summaries.append(
+                PhysicalAssessmentStudentSummary(
+                    student_id=row.student_id,
+                    student_name=row.student_name,
+                    batch_id=row.batch_id,
+                    batch_name=row.batch_name,
+                    school_id=row.school_id,
+                    school_name=row.school_name,
+                    total_sessions=row.total_sessions or 0,
+                    last_session_date=row.last_session_date,
+                )
+            )
+
+        return PhysicalAssessmentStudentSummaryResponse(students=summaries)
+
+    @staticmethod
+    def get_coach_view_students(db: Session, coach_id: int) -> PhysicalAssessmentStudentSummaryResponse:
+        assigned_batches_query = select(CoachBatch.batch_id).where(CoachBatch.coach_id == coach_id)
+        assigned_batch_ids = list(db.scalars(assigned_batches_query).all())
+        if not assigned_batch_ids:
+            return PhysicalAssessmentStudentSummaryResponse(students=[])
+
+        stmt = (
+            select(
+                Student.id.label("student_id"),
+                Student.name.label("student_name"),
+                Student.batch_id.label("batch_id"),
+                Batch.batch_name.label("batch_name"),
+                Batch.school_id.label("school_id"),
+                School.name.label("school_name"),
+                func.count(func.distinct(PhysicalAssessmentDetail.session_id)).label("total_sessions"),
+                func.max(PhysicalAssessmentSession.date_of_session).label("last_session_date"),
+            )
+            .outerjoin(PhysicalAssessmentDetail, PhysicalAssessmentDetail.student_id == Student.id)
+            .outerjoin(PhysicalAssessmentSession, PhysicalAssessmentSession.id == PhysicalAssessmentDetail.session_id)
+            .outerjoin(Batch, Batch.id == Student.batch_id)
+            .outerjoin(School, School.id == Batch.school_id)
+            .where(Student.batch_id.in_(assigned_batch_ids))
+            .group_by(
+                Student.id,
+                Student.name,
+                Student.batch_id,
+                Batch.batch_name,
+                Batch.school_id,
+                School.name,
+            )
+        )
+
+        rows = db.execute(stmt).all()
+
+        summaries: List[PhysicalAssessmentStudentSummary] = []
+        for row in rows:
+            summaries.append(
+                PhysicalAssessmentStudentSummary(
+                    student_id=row.student_id,
+                    student_name=row.student_name,
+                    batch_id=row.batch_id,
+                    batch_name=row.batch_name,
+                    school_id=row.school_id,
+                    school_name=row.school_name,
+                    total_sessions=row.total_sessions or 0,
+                    last_session_date=row.last_session_date,
+                )
+            )
+
+        return PhysicalAssessmentStudentSummaryResponse(students=summaries)
+
+    @staticmethod
+    def get_student_detail(db: Session, student_id: int) -> PhysicalAssessmentStudentDetailResponse | None:
+        student = StudentRepository.get_by_id(db, student_id)
+        if not student:
+            return None
+
+        batch = getattr(student, "batch", None)
+        school = getattr(batch, "school", None) if batch else None
+
+        results = PhysicalResultsRepository.get_by_student(db, student_id)
+        session_entries: List[PhysicalAssessmentStudentSessionResult] = []
+
+        for result in sorted(results, key=lambda r: (r.session.date_of_session if r.session else datetime.min)):
+            session = result.session
+            if session is None:
+                continue
+            coach_name = session.coach.name if session.coach else None
+            session_entries.append(
+                PhysicalAssessmentStudentSessionResult(
+                    session_id=session.id,
+                    date_of_session=session.date_of_session,
+                    coach_id=session.coach_id,
+                    coach_name=coach_name,
+                    result=PhysicalAssessmentService.serialize_result(result),
+                )
+            )
+
+        return PhysicalAssessmentStudentDetailResponse(
+            student_id=student.id,
+            student_name=student.name,
+            batch_id=student.batch_id,
+            batch_name=batch.batch_name if batch else None,
+            school_id=batch.school_id if batch else None,
+            school_name=school.name if school else None,
+            sessions=session_entries,
+        )
+
+    @staticmethod
+    def update_student_results(
+        db: Session,
+        student_id: int,
+        payload: PhysicalAssessmentStudentUpdate,
+    ) -> PhysicalAssessmentStudentDetailResponse:
+        student = StudentRepository.get_by_id(db, student_id)
+        if not student:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
+
+        if not payload.updates:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="updates must include at least one entry")
+
+        for update in payload.updates:
+            result_obj = PhysicalResultsRepository.get_by_session_and_student(db, update.session_id, student_id)
+            if not result_obj:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Result for session {update.session_id} and student {student_id} not found",
+                )
+
+            PhysicalAssessmentService.update_result(db, result_obj.id, update.result)
+
+        return PhysicalAssessmentService.get_student_detail(db, student_id)
+
+    @staticmethod
+    def delete_student_results(db: Session, student_id: int) -> bool:
+        student = StudentRepository.get_by_id(db, student_id)
+        if not student:
+            return False
+
+        deleted = PhysicalResultsRepository.delete_by_student(db, student_id)
+        return deleted > 0
