@@ -18,6 +18,7 @@ from src.db.repositories.physical_results_repository import PhysicalResultsRepos
 from src.db.repositories.physical_session_repository import PhysicalSessionRepository
 from src.db.repositories.school_repository import SchoolRepository
 from src.db.repositories.student_repository import StudentRepository
+from src.db.repositories.student_exercise_average_repository import StudentExerciseAverageRepository
 from src.schemas.batch import BatchSummary, BatchScheduleItem
 from src.schemas.physical_assessment import (
     PhysicalAssessmentResultResponse,
@@ -396,6 +397,26 @@ class PhysicalAssessmentService:
                 invalid_ids,
             )
 
+        # Update averages and levels for all students in this session
+        try:
+            avg_repo = StudentExerciseAverageRepository(db)
+            avg_repo.update_averages_for_session(
+                session_id=new_session.id,
+                batch_id=payload.batch_id,
+                school_id=refs["school_id"]
+            )
+            api_logger.info(
+                "Updated exercise averages for session %s, batch %s",
+                new_session.id,
+                payload.batch_id
+            )
+        except Exception as avg_exc:
+            api_logger.warning(
+                "Failed to update exercise averages for session %s: %s",
+                new_session.id,
+                str(avg_exc)
+            )
+
         refreshed = PhysicalSessionRepository.get_by_id(db, new_session.id)
         if refreshed is None:
             refreshed = new_session
@@ -477,6 +498,27 @@ class PhysicalAssessmentService:
 
             db.commit()
             db.refresh(session)
+            
+            # Update averages if results were updated
+            if results_data:
+                try:
+                    avg_repo = StudentExerciseAverageRepository(db)
+                    avg_repo.update_averages_for_session(
+                        session_id=session_id,
+                        batch_id=session.batch_id,
+                        school_id=session.school_id
+                    )
+                    api_logger.info(
+                        "Updated exercise averages after session update %s",
+                        session_id
+                    )
+                except Exception as avg_exc:
+                    api_logger.warning(
+                        "Failed to update exercise averages for session %s: %s",
+                        session_id,
+                        str(avg_exc)
+                    )
+            
             return PhysicalAssessmentService.serialize_session(db, session)
 
         except HTTPException:
@@ -491,9 +533,36 @@ class PhysicalAssessmentService:
         session = PhysicalSessionRepository.get_by_id(db, session_id)
         if not session:
             return False
+        
+        # Store session info before deletion
+        batch_id = session.batch_id
+        school_id = session.school_id
+        
         try:
             db.delete(session)
             db.commit()
+            
+            # Recalculate averages for students affected by this deletion
+            if batch_id and school_id:
+                try:
+                    avg_repo = StudentExerciseAverageRepository(db)
+                    updated = avg_repo.recalculate_averages_after_session_deletion(
+                        deleted_session_id=session_id,
+                        batch_id=batch_id,
+                        school_id=school_id
+                    )
+                    api_logger.info(
+                        "Recalculated %d exercise averages after deleting session %s",
+                        updated,
+                        session_id
+                    )
+                except Exception as avg_exc:
+                    api_logger.warning(
+                        "Failed to recalculate averages after session deletion %s: %s",
+                        session_id,
+                        str(avg_exc)
+                    )
+            
             return True
         except Exception:
             db.rollback()
@@ -528,6 +597,28 @@ class PhysicalAssessmentService:
         payload["is_present"] = any(value for value in values)
 
         updated = PhysicalResultsRepository.update(db, result, payload)
+        
+        # Update averages for this student's exercises
+        try:
+            session = result.session
+            if session and session.batch_id and session.school_id:
+                avg_repo = StudentExerciseAverageRepository(db)
+                avg_repo.update_averages_for_session(
+                    session_id=session.id,
+                    batch_id=session.batch_id,
+                    school_id=session.school_id
+                )
+                api_logger.info(
+                    "Updated exercise averages after result update %s",
+                    result_id
+                )
+        except Exception as avg_exc:
+            api_logger.warning(
+                "Failed to update exercise averages for result %s: %s",
+                result_id,
+                str(avg_exc)
+            )
+        
         return PhysicalAssessmentService.serialize_result(updated)
 
     @staticmethod
