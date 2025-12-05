@@ -40,6 +40,7 @@ from src.db.models.student import Student
 from src.db.models.physical_assessment import PhysicalAssessmentSession, PhysicalAssessmentDetail
 from src.db.models.exercise_level_mapping import ExerciseLevelMapping
 from src.db.models.student_exercise_average import StudentExerciseAverage
+from src.db.models.archery import ArcherySession, ArcheryResult
 
 
 def get_db() -> Generator[Session, None, None]:

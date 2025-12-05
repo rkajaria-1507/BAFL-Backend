@@ -60,6 +60,7 @@ class StudentExerciseAverageRepository:
         """
         Calculate the average score for a specific student, batch, and exercise
         across all sessions where the student was present.
+        NULL values are excluded from calculation, zero values are included.
         Returns rounded value for count exercises, decimal for others.
         """
         # Get the column attribute from PhysicalAssessmentDetail model
@@ -67,7 +68,8 @@ class StudentExerciseAverageRepository:
         if exercise_column is None:
             return None
         
-        # Query to get average of the exercise where student was present
+        # Query to get average of the exercise where student was present AND exercise value is NOT NULL
+        # This will include zeros but exclude NULLs from the calculation
         result = self.db.query(
             func.avg(exercise_column).label("average"),
             func.count(PhysicalAssessmentDetail.id).label("session_count")
@@ -77,7 +79,8 @@ class StudentExerciseAverageRepository:
             and_(
                 PhysicalAssessmentDetail.student_id == student_id,
                 PhysicalAssessmentDetail.is_present == True,
-                PhysicalAssessmentDetail.session.has(batch_id=batch_id)
+                PhysicalAssessmentDetail.session.has(batch_id=batch_id),
+                exercise_column.isnot(None)  # Exclude NULL values from average calculation
             )
         ).first()
         
@@ -98,11 +101,12 @@ class StudentExerciseAverageRepository:
         batch_id: int,
         exercise_name: str
     ) -> int:
-        """Get the number of sessions a student attended for a specific exercise in a batch."""
+        """Get the number of sessions where student has a non-NULL value for this exercise."""
         exercise_column = getattr(PhysicalAssessmentDetail, exercise_name, None)
         if exercise_column is None:
             return 0
         
+        # Count sessions where the exercise value is NOT NULL (includes zeros)
         count = self.db.query(func.count(PhysicalAssessmentDetail.id)).join(
             PhysicalAssessmentDetail.session
         ).filter(
@@ -110,7 +114,7 @@ class StudentExerciseAverageRepository:
                 PhysicalAssessmentDetail.student_id == student_id,
                 PhysicalAssessmentDetail.is_present == True,
                 PhysicalAssessmentDetail.session.has(batch_id=batch_id),
-                exercise_column > 0  # Only count sessions where exercise was performed
+                exercise_column.isnot(None)  # Count all non-NULL values (includes zeros)
             )
         ).scalar()
         
@@ -167,7 +171,7 @@ class StudentExerciseAverageRepository:
                 existing.level_score = None
                 existing.level_description = None
             
-            self.db.commit()
+            self.db.flush()
             self.db.refresh(existing)
             return existing
         else:
@@ -185,7 +189,7 @@ class StudentExerciseAverageRepository:
                 last_updated_session_id=session_id
             )
             self.db.add(new_average)
-            self.db.commit()
+            self.db.flush()
             self.db.refresh(new_average)
             return new_average
     
@@ -215,9 +219,9 @@ class StudentExerciseAverageRepository:
                 if combination_key in processed_combinations:
                     continue
                 
-                # Check if the exercise has a non-zero value for this student
-                exercise_value = getattr(result, exercise_name, 0)
-                if exercise_value > 0:
+                # Check if the exercise has a non-NULL value (includes zero)
+                exercise_value = getattr(result, exercise_name, None)
+                if exercise_value is not None:
                     avg_record = self.update_or_create_average(
                         student_id=student_id,
                         batch_id=batch_id,
@@ -333,5 +337,5 @@ class StudentExerciseAverageRepository:
                 self.db.delete(avg_record)
                 updated_count += 1
         
-        self.db.commit()
+        self.db.flush()
         return updated_count

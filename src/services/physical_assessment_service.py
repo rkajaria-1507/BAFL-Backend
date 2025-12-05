@@ -45,6 +45,71 @@ from src.db.models.coach_batch import CoachBatch
 
 
 class PhysicalAssessmentService:
+    # Exercise validation thresholds
+    EXERCISE_CONSTRAINTS = {
+        "curl_up": {"min": 0, "max": 200, "type": "higher_better"},
+        "push_up": {"min": 0, "max": 150, "type": "higher_better"},
+        "sit_and_reach": {"min": 0, "max": 100, "type": "higher_better"},
+        "walk_600m": {"min": 1.5, "max": None, "type": "lower_better"},  # min 1.5 minutes
+        "dash_50m": {"min": 5.0, "max": None, "type": "lower_better"},  # min 5.0 seconds
+        "bow_hold": {"min": 0, "max": 600, "type": "higher_better"},  # max 10 minutes
+        "plank": {"min": 0, "max": 10, "type": "higher_better"},  # max 10 minutes
+    }
+
+    @staticmethod
+    def _validate_exercise_value(exercise_name: str, value: float | int | None, student_id: int) -> None:
+        """Validate exercise values against absurdity thresholds."""
+        if value is None:
+            return  # NULL is allowed
+        
+        if exercise_name not in PhysicalAssessmentService.EXERCISE_CONSTRAINTS:
+            return
+        
+        constraints = PhysicalAssessmentService.EXERCISE_CONSTRAINTS[exercise_name]
+        value_type = constraints["type"]
+        
+        # For lower_better exercises, reject zero (can't complete in 0 time)
+        if value_type == "lower_better" and value == 0:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "code": "validation_error",
+                    "message": f"Invalid score for {exercise_name}: value cannot be 0 for timed exercises",
+                    "exercise": exercise_name,
+                    "student_id": student_id,
+                    "value": value,
+                    "constraint": "non_zero"
+                }
+            )
+        
+        # Check minimum threshold
+        if constraints["min"] is not None and value < constraints["min"]:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "code": "validation_error",
+                    "message": f"Invalid score for {exercise_name}: {value} is below minimum allowed value of {constraints['min']}",
+                    "exercise": exercise_name,
+                    "student_id": student_id,
+                    "value": value,
+                    "constraint": f"min_{constraints['min']}"
+                }
+            )
+        
+        # Check maximum threshold
+        if constraints["max"] is not None and value > constraints["max"]:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "code": "validation_error",
+                    "message": f"Invalid score for {exercise_name}: {value} exceeds maximum allowed value of {constraints['max']}",
+                    "exercise": exercise_name,
+                    "student_id": student_id,
+                    "value": value,
+                    "constraint": f"max_{constraints['max']}"
+                }
+            )
+
     @staticmethod
     def _build_batch_summary(batch: Batch | None) -> BatchSummary | None:
         if batch is None:
@@ -319,7 +384,7 @@ class PhysicalAssessmentService:
             }
             
             temp_values = {}
-            any_nonzero = False
+            any_non_null = False
 
             for field in numeric_int_fields:
                 value = getattr(result, field, None)
@@ -331,8 +396,9 @@ class PhysicalAssessmentService:
                         raise ValueError(f"Invalid integer for {field} for student {result.student_id}") from exc
                     if value < 0:
                         raise ValueError(f"Negative value for {field} for student {result.student_id}")
-                    if value > 0:
-                        any_nonzero = True
+                    # Validate for absurd values
+                    PhysicalAssessmentService._validate_exercise_value(field, value, result.student_id)
+                    any_non_null = True
                 temp_values[field] = value
 
             for field in numeric_float_fields:
@@ -345,11 +411,12 @@ class PhysicalAssessmentService:
                     if value < 0:
                         raise ValueError(f"Negative value for {field} for student {result.student_id}")
                     value = round(value, 2)
-                    if value > 0:
-                        any_nonzero = True
+                    # Validate for absurd values
+                    PhysicalAssessmentService._validate_exercise_value(field, value, result.student_id)
+                    any_non_null = True
                 temp_values[field] = value
 
-            if not any_nonzero:
+            if not any_non_null:
                 # Absent: all null
                 record["is_present"] = False
                 for field in numeric_int_fields + numeric_float_fields:
@@ -405,12 +472,14 @@ class PhysicalAssessmentService:
                 batch_id=payload.batch_id,
                 school_id=refs["school_id"]
             )
+            db.commit()
             api_logger.info(
                 "Updated exercise averages for session %s, batch %s",
                 new_session.id,
                 payload.batch_id
             )
         except Exception as avg_exc:
+            db.rollback()
             api_logger.warning(
                 "Failed to update exercise averages for session %s: %s",
                 new_session.id,

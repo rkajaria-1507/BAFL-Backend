@@ -102,15 +102,15 @@ def seed_exercise_level_mappings(db: Session):
         {"exercise": "bow_hold", "level": 7, "min": 91, "max": 9999, "higher_better": 1, "unit": "sec"},
     ])
     
-    # 7. PLANK (seconds) - Higher is better
+    # 7. PLANK (minutes) - Higher is better
     mappings.extend([
-        {"exercise": "plank", "level": 1, "min": 0, "max": 40, "higher_better": 1, "unit": "sec"},
-        {"exercise": "plank", "level": 2, "min": 41, "max": 80, "higher_better": 1, "unit": "sec"},
-        {"exercise": "plank", "level": 3, "min": 81, "max": 120, "higher_better": 1, "unit": "sec"},
-        {"exercise": "plank", "level": 4, "min": 121, "max": 160, "higher_better": 1, "unit": "sec"},
-        {"exercise": "plank", "level": 5, "min": 161, "max": 200, "higher_better": 1, "unit": "sec"},
-        {"exercise": "plank", "level": 6, "min": 201, "max": 240, "higher_better": 1, "unit": "sec"},
-        {"exercise": "plank", "level": 7, "min": 241, "max": 9999, "higher_better": 1, "unit": "sec"},
+        {"exercise": "plank", "level": 1, "min": 0, "max": 0.67, "higher_better": 1, "unit": "min"},      # 0-40 sec
+        {"exercise": "plank", "level": 2, "min": 0.68, "max": 1.33, "higher_better": 1, "unit": "min"},   # 41-80 sec
+        {"exercise": "plank", "level": 3, "min": 1.34, "max": 2.0, "higher_better": 1, "unit": "min"},    # 81-120 sec
+        {"exercise": "plank", "level": 4, "min": 2.01, "max": 2.67, "higher_better": 1, "unit": "min"},   # 121-160 sec
+        {"exercise": "plank", "level": 5, "min": 2.68, "max": 3.33, "higher_better": 1, "unit": "min"},   # 161-200 sec
+        {"exercise": "plank", "level": 6, "min": 3.34, "max": 4.0, "higher_better": 1, "unit": "min"},    # 201-240 sec
+        {"exercise": "plank", "level": 7, "min": 4.01, "max": 166.65, "higher_better": 1, "unit": "min"}, # 241+ sec
     ])
     
     # Create ExerciseLevelMapping objects
