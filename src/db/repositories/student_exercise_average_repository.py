@@ -34,21 +34,38 @@ class StudentExerciseAverageRepository:
         """
         Get the level information for a given exercise and score.
         Returns dict with level, level_score, and level_description, or None if no mapping exists.
-        """
-        mapping = self.db.query(ExerciseLevelMapping).filter(
-            and_(
-                ExerciseLevelMapping.exercise_name == exercise_name,
-                ExerciseLevelMapping.min_score <= score,
-                ExerciseLevelMapping.max_score >= score
-            )
-        ).first()
         
-        if mapping:
-            return {
-                "level": mapping.level,
-                "level_score": mapping.level_score,
-                "level_description": mapping.level_description
-            }
+        Logic:
+        - For "higher is better" exercises (is_higher_better=1): min_score < score <= max_score
+        - For "lower is better" exercises (is_higher_better=0): min_score <= score < max_score
+        """
+        # Get all mappings for this exercise to check is_higher_better flag
+        mappings = self.db.query(ExerciseLevelMapping).filter(
+            ExerciseLevelMapping.exercise_name == exercise_name
+        ).all()
+        
+        if not mappings:
+            return None
+        
+        # Determine the comparison logic based on is_higher_better
+        for mapping in mappings:
+            if mapping.is_higher_better == 1:
+                # Higher is better: min_score < score <= max_score
+                if mapping.min_score < score <= mapping.max_score:
+                    return {
+                        "level": mapping.level,
+                        "level_score": mapping.level_score,
+                        "level_description": mapping.level_description
+                    }
+            else:
+                # Lower is better: min_score <= score < max_score
+                if mapping.min_score <= score < mapping.max_score:
+                    return {
+                        "level": mapping.level,
+                        "level_score": mapping.level_score,
+                        "level_description": mapping.level_description
+                    }
+        
         return None
     
     def calculate_average_for_student_batch_exercise(

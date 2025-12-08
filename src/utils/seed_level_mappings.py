@@ -46,78 +46,78 @@ def seed_exercise_level_mappings(db: Session):
     # 1. CURL UP (count) - Higher is better
     mappings.extend([
         {"exercise": "curl_up", "level": 1, "min": 0, "max": 14, "higher_better": 1, "unit": "count"},
-        {"exercise": "curl_up", "level": 2, "min": 15, "max": 15, "higher_better": 1, "unit": "count"},
-        {"exercise": "curl_up", "level": 3, "min": 16, "max": 20, "higher_better": 1, "unit": "count"},
-        {"exercise": "curl_up", "level": 4, "min": 21, "max": 21, "higher_better": 1, "unit": "count"},
-        {"exercise": "curl_up", "level": 5, "min": 22, "max": 23, "higher_better": 1, "unit": "count"},
-        {"exercise": "curl_up", "level": 6, "min": 24, "max": 24, "higher_better": 1, "unit": "count"},
-        {"exercise": "curl_up", "level": 7, "min": 25, "max": 999, "higher_better": 1, "unit": "count"},
+        {"exercise": "curl_up", "level": 2, "min": 14, "max": 15, "higher_better": 1, "unit": "count"},
+        {"exercise": "curl_up", "level": 3, "min": 15, "max": 20, "higher_better": 1, "unit": "count"},
+        {"exercise": "curl_up", "level": 4, "min": 20, "max": 21, "higher_better": 1, "unit": "count"},
+        {"exercise": "curl_up", "level": 5, "min": 21, "max": 23, "higher_better": 1, "unit": "count"},
+        {"exercise": "curl_up", "level": 6, "min": 23, "max": 24, "higher_better": 1, "unit": "count"},
+        {"exercise": "curl_up", "level": 7, "min": 24, "max": 999, "higher_better": 1, "unit": "count"},
     ])
     
     # 2. PUSH UP (count) - Higher is better
     mappings.extend([
         {"exercise": "push_up", "level": 1, "min": 0, "max": 7, "higher_better": 1, "unit": "count"},
-        {"exercise": "push_up", "level": 2, "min": 8, "max": 8, "higher_better": 1, "unit": "count"},
-        {"exercise": "push_up", "level": 3, "min": 9, "max": 9, "higher_better": 1, "unit": "count"},  # Assuming L3 is 9 reps
-        {"exercise": "push_up", "level": 4, "min": 10, "max": 10, "higher_better": 1, "unit": "count"},  # Assuming L4 is 10 reps
-        {"exercise": "push_up", "level": 5, "min": 11, "max": 11, "higher_better": 1, "unit": "count"},  # Assuming L5 is 11 reps
-        {"exercise": "push_up", "level": 6, "min": 12, "max": 12, "higher_better": 1, "unit": "count"},
-        {"exercise": "push_up", "level": 7, "min": 13, "max": 999, "higher_better": 1, "unit": "count"},
+        {"exercise": "push_up", "level": 2, "min": 7, "max": 8, "higher_better": 1, "unit": "count"},
+        {"exercise": "push_up", "level": 3, "min": 8, "max": 9, "higher_better": 1, "unit": "count"},  # Assuming L3 is 9 reps
+        {"exercise": "push_up", "level": 4, "min": 9, "max": 10, "higher_better": 1, "unit": "count"},  # Assuming L4 is 10 reps
+        {"exercise": "push_up", "level": 5, "min": 10, "max": 11, "higher_better": 1, "unit": "count"},  # Assuming L5 is 11 reps
+        {"exercise": "push_up", "level": 6, "min": 11, "max": 12, "higher_better": 1, "unit": "count"},
+        {"exercise": "push_up", "level": 7, "min": 12, "max": 999, "higher_better": 1, "unit": "count"},
     ])
     
     # 3. SIT AND REACH (cm) - Higher is better
     mappings.extend([
         {"exercise": "sit_and_reach", "level": 1, "min": 0, "max": 15.8, "higher_better": 1, "unit": "cm"},
-        {"exercise": "sit_and_reach", "level": 2, "min": 15.81, "max": 19.7, "higher_better": 1, "unit": "cm"},
-        {"exercise": "sit_and_reach", "level": 3, "min": 19.71, "max": 23.1, "higher_better": 1, "unit": "cm"},
-        {"exercise": "sit_and_reach", "level": 4, "min": 23.11, "max": 24.9, "higher_better": 1, "unit": "cm"},
-        {"exercise": "sit_and_reach", "level": 5, "min": 24.91, "max": 27.1, "higher_better": 1, "unit": "cm"},
-        {"exercise": "sit_and_reach", "level": 6, "min": 27.11, "max": 32.5, "higher_better": 1, "unit": "cm"},
-        {"exercise": "sit_and_reach", "level": 7, "min": 32.51, "max": 999, "higher_better": 1, "unit": "cm"},
+        {"exercise": "sit_and_reach", "level": 2, "min": 15.8, "max": 19.7, "higher_better": 1, "unit": "cm"},
+        {"exercise": "sit_and_reach", "level": 3, "min": 19.7, "max": 23.1, "higher_better": 1, "unit": "cm"},
+        {"exercise": "sit_and_reach", "level": 4, "min": 23.1, "max": 24.9, "higher_better": 1, "unit": "cm"},
+        {"exercise": "sit_and_reach", "level": 5, "min": 24.9, "max": 27.1, "higher_better": 1, "unit": "cm"},
+        {"exercise": "sit_and_reach", "level": 6, "min": 27.1, "max": 32.5, "higher_better": 1, "unit": "cm"},
+        {"exercise": "sit_and_reach", "level": 7, "min": 32.5, "max": 999, "higher_better": 1, "unit": "cm"},
     ])
     
     # 4. 600M WALK (minutes) - Lower is better
     mappings.extend([
         {"exercise": "walk_600m", "level": 1, "min": 3.24, "max": 999, "higher_better": 0, "unit": "min"},
-        {"exercise": "walk_600m", "level": 2, "min": 3.14, "max": 3.23, "higher_better": 0, "unit": "min"},
-        {"exercise": "walk_600m", "level": 3, "min": 3.07, "max": 3.13, "higher_better": 0, "unit": "min"},
-        {"exercise": "walk_600m", "level": 4, "min": 3.04, "max": 3.06, "higher_better": 0, "unit": "min"},
-        {"exercise": "walk_600m", "level": 5, "min": 3.01, "max": 3.03, "higher_better": 0, "unit": "min"},
-        {"exercise": "walk_600m", "level": 6, "min": 3.00, "max": 3.00, "higher_better": 0, "unit": "min"},
-        {"exercise": "walk_600m", "level": 7, "min": 0, "max": 2.99, "higher_better": 0, "unit": "min"},
+        {"exercise": "walk_600m", "level": 2, "min": 3.14, "max": 3.24, "higher_better": 0, "unit": "min"},
+        {"exercise": "walk_600m", "level": 3, "min": 3.07, "max": 3.14, "higher_better": 0, "unit": "min"},
+        {"exercise": "walk_600m", "level": 4, "min": 3.04, "max": 3.07, "higher_better": 0, "unit": "min"},
+        {"exercise": "walk_600m", "level": 5, "min": 3.01, "max": 3.04, "higher_better": 0, "unit": "min"},
+        {"exercise": "walk_600m", "level": 6, "min": 3.00, "max": 3.01, "higher_better": 0, "unit": "min"},
+        {"exercise": "walk_600m", "level": 7, "min": 0, "max": 3.00, "higher_better": 0, "unit": "min"},
     ])
     
     # 5. 50M DASH (seconds) - Lower is better
     mappings.extend([
         {"exercise": "dash_50m", "level": 1, "min": 9.5, "max": 999, "higher_better": 0, "unit": "sec"},
-        {"exercise": "dash_50m", "level": 2, "min": 9.0, "max": 9.49, "higher_better": 0, "unit": "sec"},
-        {"exercise": "dash_50m", "level": 3, "min": 8.6, "max": 8.99, "higher_better": 0, "unit": "sec"},
-        {"exercise": "dash_50m", "level": 4, "min": 8.4, "max": 8.59, "higher_better": 0, "unit": "sec"},
-        {"exercise": "dash_50m", "level": 5, "min": 8.2, "max": 8.39, "higher_better": 0, "unit": "sec"},
-        {"exercise": "dash_50m", "level": 6, "min": 8.0, "max": 8.19, "higher_better": 0, "unit": "sec"},
-        {"exercise": "dash_50m", "level": 7, "min": 0, "max": 7.99, "higher_better": 0, "unit": "sec"},
+        {"exercise": "dash_50m", "level": 2, "min": 9.0, "max": 9.5, "higher_better": 0, "unit": "sec"},
+        {"exercise": "dash_50m", "level": 3, "min": 8.6, "max": 9.0, "higher_better": 0, "unit": "sec"},
+        {"exercise": "dash_50m", "level": 4, "min": 8.4, "max": 8.6, "higher_better": 0, "unit": "sec"},
+        {"exercise": "dash_50m", "level": 5, "min": 8.2, "max": 8.4, "higher_better": 0, "unit": "sec"},
+        {"exercise": "dash_50m", "level": 6, "min": 8.0, "max": 8.2, "higher_better": 0, "unit": "sec"},
+        {"exercise": "dash_50m", "level": 7, "min": 0, "max": 8.0, "higher_better": 0, "unit": "sec"},
     ])
     
     # 6. BOW HOLD (seconds) - Higher is better
     mappings.extend([
         {"exercise": "bow_hold", "level": 1, "min": 0, "max": 40, "higher_better": 1, "unit": "sec"},
-        {"exercise": "bow_hold", "level": 2, "min": 41, "max": 50, "higher_better": 1, "unit": "sec"},
-        {"exercise": "bow_hold", "level": 3, "min": 51, "max": 60, "higher_better": 1, "unit": "sec"},
-        {"exercise": "bow_hold", "level": 4, "min": 61, "max": 70, "higher_better": 1, "unit": "sec"},
-        {"exercise": "bow_hold", "level": 5, "min": 71, "max": 80, "higher_better": 1, "unit": "sec"},
-        {"exercise": "bow_hold", "level": 6, "min": 81, "max": 90, "higher_better": 1, "unit": "sec"},
-        {"exercise": "bow_hold", "level": 7, "min": 91, "max": 9999, "higher_better": 1, "unit": "sec"},
+        {"exercise": "bow_hold", "level": 2, "min": 40, "max": 50, "higher_better": 1, "unit": "sec"},
+        {"exercise": "bow_hold", "level": 3, "min": 50, "max": 60, "higher_better": 1, "unit": "sec"},
+        {"exercise": "bow_hold", "level": 4, "min": 60, "max": 70, "higher_better": 1, "unit": "sec"},
+        {"exercise": "bow_hold", "level": 5, "min": 70, "max": 80, "higher_better": 1, "unit": "sec"},
+        {"exercise": "bow_hold", "level": 6, "min": 80, "max": 90, "higher_better": 1, "unit": "sec"},
+        {"exercise": "bow_hold", "level": 7, "min": 90, "max": 9999, "higher_better": 1, "unit": "sec"},
     ])
     
     # 7. PLANK (minutes) - Higher is better
     mappings.extend([
         {"exercise": "plank", "level": 1, "min": 0, "max": 0.67, "higher_better": 1, "unit": "min"},      # 0-40 sec
-        {"exercise": "plank", "level": 2, "min": 0.68, "max": 1.33, "higher_better": 1, "unit": "min"},   # 41-80 sec
-        {"exercise": "plank", "level": 3, "min": 1.34, "max": 2.0, "higher_better": 1, "unit": "min"},    # 81-120 sec
-        {"exercise": "plank", "level": 4, "min": 2.01, "max": 2.67, "higher_better": 1, "unit": "min"},   # 121-160 sec
-        {"exercise": "plank", "level": 5, "min": 2.68, "max": 3.33, "higher_better": 1, "unit": "min"},   # 161-200 sec
-        {"exercise": "plank", "level": 6, "min": 3.34, "max": 4.0, "higher_better": 1, "unit": "min"},    # 201-240 sec
-        {"exercise": "plank", "level": 7, "min": 4.01, "max": 166.65, "higher_better": 1, "unit": "min"}, # 241+ sec
+        {"exercise": "plank", "level": 2, "min": 0.67, "max": 1.33, "higher_better": 1, "unit": "min"},   # 41-80 sec
+        {"exercise": "plank", "level": 3, "min": 1.33, "max": 2.0, "higher_better": 1, "unit": "min"},    # 81-120 sec
+        {"exercise": "plank", "level": 4, "min": 2.0, "max": 2.67, "higher_better": 1, "unit": "min"},   # 121-160 sec
+        {"exercise": "plank", "level": 5, "min": 2.67, "max": 3.33, "higher_better": 1, "unit": "min"},   # 161-200 sec
+        {"exercise": "plank", "level": 6, "min": 3.33, "max": 4.0, "higher_better": 1, "unit": "min"},    # 201-240 sec
+        {"exercise": "plank", "level": 7, "min": 4.0, "max": 166.65, "higher_better": 1, "unit": "min"}, # 241+ sec
     ])
     
     # Create ExerciseLevelMapping objects
