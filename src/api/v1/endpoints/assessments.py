@@ -11,6 +11,7 @@ from src.schemas.physical_assessment import (
     PhysicalAssessmentStudentSummaryResponse,
     PhysicalAssessmentStudentDetailResponse,
     PhysicalAssessmentStudentUpdate,
+    PhysicalAssessmentLevelMappingResponse,
 )
 from src.services.physical_assessment_service import PhysicalAssessmentService
 from src.api.v1.dependencies.auth import get_current_user, require_permission
@@ -281,5 +282,23 @@ def delete_session(
         api_logger.error(f"Failed to delete session {session_id}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail={"code": "server_error", "message": str(e)})
     return None
+
+
+@router.get("/level-mappings", response_model=PhysicalAssessmentLevelMappingResponse)
+def get_level_mappings(
+    current_user: User = Depends(require_view_sessions),
+    db: Session = Depends(get_db)
+):
+    """
+    Get exercise level mappings for all students across all schools and batches.
+    Returns school -> batch -> student -> exercises with average scores, levels, and descriptions.
+    Includes all 7 exercises for each student with null values for exercises not performed.
+    """
+    api_logger.info(f"Fetching level mappings. User: {current_user.username} (ID: {current_user.id})")
+    try:
+        return PhysicalAssessmentService.get_level_mappings(db)
+    except Exception as e:
+        api_logger.error(f"Error fetching level mappings: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail={"code": "server_error", "message": str(e)})
 
 

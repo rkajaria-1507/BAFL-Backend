@@ -339,3 +339,72 @@ class StudentExerciseAverageRepository:
         
         self.db.flush()
         return updated_count
+
+    def get_all_level_mappings_with_relations(self):
+        """
+        Get all student exercise averages with related school, batch, student, and coach information.
+        Returns data structured for level mapping endpoint.
+        """
+        from src.db.models.school import School
+        from src.db.models.batch import Batch
+        from src.db.models.student import Student
+        from src.db.models.coach import Coach
+        from src.db.models.coach_batch import CoachBatch
+        
+        # Query all student exercise averages with joins
+        query = (
+            self.db.query(
+                School.name.label('school_name'),
+                Batch.batch_name,
+                Student.name.label('student_name'),
+                StudentExerciseAverage.exercise_name,
+                StudentExerciseAverage.average_score,
+                StudentExerciseAverage.current_level,
+                StudentExerciseAverage.level_description,
+                School.id.label('school_id'),
+                Batch.id.label('batch_id'),
+                Student.id.label('student_id')
+            )
+            .join(School, StudentExerciseAverage.school_id == School.id)
+            .join(Batch, StudentExerciseAverage.batch_id == Batch.id)
+            .join(Student, StudentExerciseAverage.student_id == Student.id)
+            .order_by(School.name, Batch.batch_name, Student.name, StudentExerciseAverage.exercise_name)
+        )
+        
+        results = query.all()
+        
+        # Query all students (even those without exercise data)
+        all_students_query = (
+            self.db.query(
+                School.name.label('school_name'),
+                Batch.batch_name,
+                Student.name.label('student_name'),
+                School.id.label('school_id'),
+                Batch.id.label('batch_id'),
+                Student.id.label('student_id')
+            )
+            .join(Batch, Student.batch_id == Batch.id)
+            .join(School, Batch.school_id == School.id)
+            .order_by(School.name, Batch.batch_name, Student.name)
+        )
+        
+        all_students = all_students_query.all()
+        
+        # Query coach assignments for all batches
+        coach_query = (
+            self.db.query(
+                Batch.id.label('batch_id'),
+                Coach.name.label('coach_name')
+            )
+            .join(CoachBatch, Batch.id == CoachBatch.batch_id)
+            .join(Coach, CoachBatch.coach_id == Coach.id)
+            .order_by(Batch.id, Coach.name)
+        )
+        
+        coach_results = coach_query.all()
+        
+        return {
+            'exercise_data': results,
+            'all_students': all_students,
+            'coaches': coach_results
+        }

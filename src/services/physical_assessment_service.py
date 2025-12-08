@@ -984,3 +984,110 @@ class PhysicalAssessmentService:
 
         deleted = PhysicalResultsRepository.delete_by_student(db, student_id)
         return deleted > 0
+
+    @staticmethod
+    def get_level_mappings(db: Session):
+        """
+        Get all student exercise level mappings grouped by school, batch, and student.
+        Includes all 7 exercises for each student with null values for exercises not performed.
+        """
+        from src.schemas.physical_assessment import (
+            PhysicalAssessmentLevelMappingResponse,
+            SchoolLevelMapping,
+            BatchLevelMapping,
+            StudentLevelMapping,
+            ExercisePerformance
+        )
+        from collections import defaultdict
+        
+        # Define all exercises in order
+        ALL_EXERCISES = ["curl_up", "push_up", "sit_and_reach", "walk_600m", "dash_50m", "bow_hold", "plank"]
+        
+        repo = StudentExerciseAverageRepository(db)
+        data = repo.get_all_level_mappings_with_relations()
+        
+        # Build coach mapping: batch_id -> list of coach names
+        coach_map = defaultdict(list)
+        for coach_record in data['coaches']:
+            coach_map[coach_record.batch_id].append(coach_record.coach_name)
+        
+        # Build exercise data mapping: (school_id, batch_id, student_id, exercise_name) -> data
+        exercise_map = {}
+        for record in data['exercise_data']:
+            key = (record.school_id, record.batch_id, record.student_id, record.exercise_name)
+            exercise_map[key] = {
+                'average_score': record.average_score,
+                'level': record.current_level,
+                'level_description': record.level_description
+            }
+        
+        # Build nested structure using all students
+        schools_dict = {}
+        
+        for student_record in data['all_students']:
+            school_id = student_record.school_id
+            batch_id = student_record.batch_id
+            student_id = student_record.student_id
+            
+            # Initialize school if not exists
+            if school_id not in schools_dict:
+                schools_dict[school_id] = {
+                    'school_name': student_record.school_name,
+                    'batches': {}
+                }
+            
+            # Initialize batch if not exists
+            if batch_id not in schools_dict[school_id]['batches']:
+                coach_names = coach_map.get(batch_id)
+                schools_dict[school_id]['batches'][batch_id] = {
+                    'batch_name': student_record.batch_name,
+                    'coach_names': coach_names if coach_names else None,
+                    'students': []
+                }
+            
+            # Create exercise list for this student (all 7 exercises)
+            exercises = []
+            for exercise_name in ALL_EXERCISES:
+                key = (school_id, batch_id, student_id, exercise_name)
+                if key in exercise_map:
+                    # Exercise data exists
+                    exercises.append(ExercisePerformance(
+                        exercise_name=exercise_name,
+                        average_score=exercise_map[key]['average_score'],
+                        level=exercise_map[key]['level'],
+                        level_description=exercise_map[key]['level_description']
+                    ))
+                else:
+                    # Exercise not performed - all null values
+                    exercises.append(ExercisePerformance(
+                        exercise_name=exercise_name,
+                        average_score=None,
+                        level=None,
+                        level_description=None
+                    ))
+            
+            # Add student to batch
+            schools_dict[school_id]['batches'][batch_id]['students'].append(
+                StudentLevelMapping(
+                    student_name=student_record.student_name,
+                    exercises=exercises
+                )
+            )
+        
+        # Convert nested dicts to list format for response
+        schools_list = []
+        for school_id, school_data in schools_dict.items():
+            batches_list = []
+            for batch_id, batch_data in school_data['batches'].items():
+                batches_list.append(BatchLevelMapping(
+                    batch_name=batch_data['batch_name'],
+                    coach_names=batch_data['coach_names'],
+                    students=batch_data['students']
+                ))
+            
+            schools_list.append(SchoolLevelMapping(
+                school_name=school_data['school_name'],
+                batches=batches_list
+            ))
+        
+        return PhysicalAssessmentLevelMappingResponse(schools=schools_list)

@@ -156,3 +156,46 @@ class PhysicalAssessmentStudentSessionUpdate(BaseModel):
 
 class PhysicalAssessmentStudentUpdate(BaseModel):
     updates: List[PhysicalAssessmentStudentSessionUpdate] = Field(..., min_length=1)
+
+
+# Level Mapping Schemas
+class ExercisePerformance(BaseModel):
+    exercise_name: str
+    average_score: Optional[float] = None
+    level: Optional[int] = None
+    level_description: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class StudentLevelMapping(BaseModel):
+    student_name: str
+    exercises: List[ExercisePerformance]
+
+    class Config:
+        from_attributes = True
+
+
+class BatchLevelMapping(BaseModel):
+    batch_name: str
+    coach_names: Optional[List[str]] = None
+    students: List[StudentLevelMapping]
+
+    class Config:
+        from_attributes = True
+
+
+class SchoolLevelMapping(BaseModel):
+    school_name: str
+    batches: List[BatchLevelMapping]
+
+    class Config:
+        from_attributes = True
+
+
+class PhysicalAssessmentLevelMappingResponse(BaseModel):
+    schools: List[SchoolLevelMapping]
+
+    class Config:
+        from_attributes = True
