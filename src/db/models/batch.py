@@ -16,6 +16,10 @@ class Batch(Base):
     students = relationship("Student", back_populates="batch", cascade="all, delete-orphan")
     physical_sessions = relationship("PhysicalAssessmentSession", back_populates="batch")
     archery_sessions = relationship("ArcherySession", back_populates="batch")
+    archery_tournament_sessions = relationship(
+        "ArcheryTournamentSession",
+        back_populates="batch",
+    )
     coach_assignments = relationship("CoachBatch", back_populates="batch", cascade="all, delete-orphan")
     schedules = relationship("BatchSchedule", back_populates="batch", cascade="all, delete-orphan")
 

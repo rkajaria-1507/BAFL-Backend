@@ -10,12 +10,16 @@ class ArcheryShotInput(BaseModel):
     y_coordinate: Optional[float] = None
     score: int
     max_score: int = 10
-    distance: float
     arrow_number: int
 
-class ArcheryStudentResultInput(BaseModel):
+class ArcheryRoundInput(BaseModel):
+    number: int = Field(..., ge=1, le=12)
+    shots: List[ArcheryShotInput] = Field(..., min_length=1)
+
+
+class ArcheryStudentRoundInput(BaseModel):
     student_id: int
-    shots: List[ArcheryShotInput]
+    rounds: List[ArcheryRoundInput] = Field(..., min_length=1)
 
 class ArcheryShotResponse(BaseModel):
     id: int
@@ -23,7 +27,6 @@ class ArcheryShotResponse(BaseModel):
     y_coordinate: Optional[float] = None
     score: int
     max_score: int = 10
-    distance: float
     arrow_number: int
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -31,19 +34,31 @@ class ArcheryShotResponse(BaseModel):
     class Config:
         from_attributes = True
 
-class ArcheryStudentResultResponse(BaseModel):
+class ArcheryRoundResponse(BaseModel):
+    number: int
+    shots: List[ArcheryShotResponse]
+
+    class Config:
+        from_attributes = True
+
+
+class ArcheryStudentRoundResponse(BaseModel):
     student_id: int
     student: Optional[StudentResponse] = None
-    shots: List[ArcheryShotResponse]
+    rounds: List[ArcheryRoundResponse] = Field(default_factory=list)
+
+    class Config:
+        from_attributes = True
 
 class ArcherySessionBase(BaseModel):
     coach_id: Optional[int] = None
     school_id: Optional[int] = None
     batch_id: int
     date_of_session: date
+    distance: float
 
 class ArcherySessionCreate(ArcherySessionBase):
-    results: List[ArcheryStudentResultInput]
+    results: List[ArcheryStudentRoundInput]
 
 class ArcherySessionResponse(ArcherySessionBase):
     id: int
@@ -52,7 +67,8 @@ class ArcherySessionResponse(ArcherySessionBase):
     coach_name: Optional[str] = None
     batch: Optional[BatchSummary] = None
     school: Optional[SchoolResponse] = None
-    results: List[ArcheryStudentResultResponse] = Field(default_factory=list)
+    results: List[ArcheryStudentRoundResponse] = Field(default_factory=list)
+    student_count: int
     
     class Config:
         from_attributes = True
@@ -67,6 +83,8 @@ class ArcherySessionSummary(BaseModel):
     coach_id: Optional[int] = None
     coach_name: Optional[str] = None
     date_of_session: date
+    distance: float
+    student_count: int
 
 
 class ArcherySessionSummaryResponse(BaseModel):
@@ -95,7 +113,8 @@ class ArcheryStudentSessionDetail(BaseModel):
     date_of_session: date
     coach_id: Optional[int] = None
     coach_name: Optional[str] = None
-    shots: List[ArcheryShotResponse] = Field(default_factory=list)
+    distance: float
+    rounds: List[ArcheryRoundResponse] = Field(default_factory=list)
 
 
 class ArcheryStudentDetailResponse(BaseModel):
@@ -110,7 +129,7 @@ class ArcheryStudentDetailResponse(BaseModel):
 
 class ArcheryStudentSessionUpdate(BaseModel):
     session_id: int
-    shots: List[ArcheryShotInput] = Field(default_factory=list)
+    rounds: List[ArcheryRoundInput] = Field(default_factory=list)
 
 
 class ArcheryStudentUpdate(BaseModel):
@@ -122,5 +141,6 @@ class ArcherySessionUpdate(BaseModel):
     school_id: Optional[int] = None
     batch_id: Optional[int] = None
     date_of_session: Optional[date] = None
-    results: Optional[List[ArcheryStudentResultInput]] = None
+    distance: Optional[float] = None
+    results: Optional[List[ArcheryStudentRoundInput]] = None
 

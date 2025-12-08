@@ -777,6 +777,7 @@ class PhysicalAssessmentService:
                 coach_id=session.coach_id,
                 coach_name=coach_name,
                 date_of_session=session.date_of_session,
+                student_count=session.student_count or 0,
             ))
         return PhysicalAssessmentSessionAdminViewResponse(sessions=view_sessions)
 
@@ -812,6 +813,7 @@ class PhysicalAssessmentService:
                 coach_id=session.coach_id,
                 coach_name=coach_name,
                 date_of_session=session.date_of_session,
+                student_count=session.student_count or 0,
             ))
         return PhysicalAssessmentSessionAdminViewResponse(sessions=view_sessions)
 

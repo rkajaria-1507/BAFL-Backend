@@ -16,7 +16,7 @@ from src.services.archery_service import ArcheryService
 from src.api.v1.dependencies.auth import get_current_user
 from src.db.models.user import User, UserRole
 
-router = APIRouter(prefix="/archery", tags=["Archery"])
+router = APIRouter(prefix="/archery", tags=["Archery - Practice"])
 
 # Permissions (reusing physical permissions or creating new ones? User didn't specify. 
 # Assuming similar permissions structure. I'll use PHYSICAL_SESSIONS_* for now or generic ones if available.
@@ -157,7 +157,6 @@ def delete_session(
 
     ArcheryService.delete_session(db, session_id)
     return None
-
 
 @router.get("/students/admin-view", response_model=ArcheryStudentSummaryResponse)
 def get_admin_view_students(

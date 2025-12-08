@@ -41,6 +41,11 @@ from src.db.models.physical_assessment import PhysicalAssessmentSession, Physica
 from src.db.models.exercise_level_mapping import ExerciseLevelMapping
 from src.db.models.student_exercise_average import StudentExerciseAverage
 from src.db.models.archery import ArcherySession, ArcheryResult
+from src.db.models.archery_tournament import (
+    ArcheryTournamentSession,
+    ArcheryTournamentResult,
+    ArcheryTournamentCategory,
+)
 
 
 def get_db() -> Generator[Session, None, None]:

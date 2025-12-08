@@ -6,16 +6,16 @@ from fastapi import HTTPException, status
 
 from src.db.models.archery import ArcherySession, ArcheryResult
 from src.db.models.batch import Batch
-from src.db.models.student import Student
 from src.db.models.school import School
 from src.db.models.user import User, UserRole
 from src.db.models.coach_batch import CoachBatch
 from src.db.repositories.archery_repository import ArcherySessionRepository, ArcheryResultRepository
 from src.db.repositories.student_repository import StudentRepository
 from src.schemas.archery import (
-    ArcherySessionCreate, 
-    ArcherySessionResponse, 
-    ArcheryStudentResultResponse,
+    ArcherySessionCreate,
+    ArcherySessionResponse,
+    ArcheryStudentRoundResponse,
+    ArcheryRoundResponse,
     ArcheryShotResponse,
     ArcherySessionSummaryResponse,
     ArcherySessionSummary,
@@ -55,26 +55,41 @@ class ArcheryService:
             batch_id=payload.batch_id,
             coach_id=refs["coach_id"],
             school_id=refs["school_id"],
-            date_of_session=payload.date_of_session
+            date_of_session=payload.date_of_session,
+            distance=payload.distance,
         )
         session = ArcherySessionRepository.create(db, session)
 
         # Create Results
-        results_to_create = []
+        results_to_create: List[ArcheryResult] = []
+        seen_pairs: set[tuple[int, int]] = set()
         for student_input in payload.results:
             if valid_student_ids is not None and student_input.student_id not in valid_student_ids:
                 raise HTTPException(status_code=400, detail=f"Student {student_input.student_id} does not belong to batch {payload.batch_id}")
-            for shot in student_input.shots:
-                results_to_create.append(ArcheryResult(
-                    session_id=session.id,
-                    student_id=student_input.student_id,
-                    x_coordinate=shot.x_coordinate,
-                    y_coordinate=shot.y_coordinate,
-                    score=shot.score,
-                    max_score=shot.max_score,
-                    distance=shot.distance,
-                    arrow_number=shot.arrow_number
-                ))
+
+            for round_input in student_input.rounds:
+                round_number = round_input.number
+                key = (student_input.student_id, round_number)
+                if key in seen_pairs:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Duplicate round {round_number} supplied for student {student_input.student_id}",
+                    )
+                seen_pairs.add(key)
+
+                for shot in round_input.shots:
+                    results_to_create.append(
+                        ArcheryResult(
+                            session_id=session.id,
+                            student_id=student_input.student_id,
+                            round_number=round_number,
+                            x_coordinate=shot.x_coordinate,
+                            y_coordinate=shot.y_coordinate,
+                            score=shot.score,
+                            max_score=shot.max_score,
+                            arrow_number=shot.arrow_number,
+                        )
+                    )
         
         if results_to_create:
             ArcheryResultRepository.create_all(db, results_to_create)
@@ -86,27 +101,45 @@ class ArcheryService:
     @staticmethod
     def serialize_session(db: Session, session: ArcherySession) -> ArcherySessionResponse:
         # Build response manually to ensure all fields are populated
-        
-        # Ensure results are loaded
+
         results = session.results
-        
-        # Group by student
-        grouped_results = {}
+
+        grouped_by_student: dict[int, dict[str, object]] = {}
+
         for r in results:
-            if r.student_id not in grouped_results:
-                grouped_results[r.student_id] = {
-                    "student": r.student,
-                    "shots": []
-                }
-            grouped_results[r.student_id]["shots"].append(ArcheryShotResponse.model_validate(r))
-            
-        final_results = []
-        for student_id, data in grouped_results.items():
-            final_results.append(ArcheryStudentResultResponse(
-                student_id=student_id,
-                student=data["student"],
-                shots=data["shots"]
-            ))
+            entry = grouped_by_student.setdefault(
+                r.student_id,
+                {"student": r.student, "rounds": {}},
+            )
+            rounds_map: dict[int, List[ArcheryShotResponse]] = entry["rounds"]  # type: ignore[assignment]
+            round_shots = rounds_map.setdefault(r.round_number, [])
+            round_shots.append(ArcheryShotResponse.model_validate(r))
+
+        final_results: List[ArcheryStudentRoundResponse] = []
+        for student_id in sorted(grouped_by_student.keys()):
+            data = grouped_by_student[student_id]
+            student = data["student"]
+            rounds_map = data["rounds"]  # type: ignore[assignment]
+
+            round_responses: List[ArcheryRoundResponse] = []
+            for round_number, shots in sorted(rounds_map.items(), key=lambda item: item[0]):
+                shots.sort(key=lambda s: getattr(s, "arrow_number", 0))
+                round_responses.append(
+                    ArcheryRoundResponse(
+                        number=round_number,
+                        shots=shots,
+                    )
+                )
+
+            final_results.append(
+                ArcheryStudentRoundResponse(
+                    student_id=student_id,
+                    student=student,
+                    rounds=round_responses,
+                )
+            )
+
+        student_count = len(grouped_by_student)
         
         return ArcherySessionResponse(
             id=session.id,
@@ -114,12 +147,14 @@ class ArcheryService:
             school_id=session.school_id,
             batch_id=session.batch_id,
             date_of_session=session.date_of_session,
+             distance=session.distance,
             created_at=session.created_at,
             updated_at=session.updated_at,
             coach_name=session.coach.name if session.coach else None,
             batch=PhysicalAssessmentService._build_batch_summary(session.batch), # Reuse helper
             school=session.school,
-            results=final_results
+             results=final_results,
+            student_count=student_count,
         )
 
     @staticmethod
@@ -138,10 +173,24 @@ class ArcheryService:
         sessions = ArcherySessionRepository.get_all(db)
         summaries: List[ArcherySessionSummary] = []
 
+        session_ids = [session.id for session in sessions]
+        counts_map: dict[int, int] = {}
+        if session_ids:
+            count_rows = db.execute(
+                select(
+                    ArcheryResult.session_id,
+                    func.count(func.distinct(ArcheryResult.student_id)).label("student_count"),
+                )
+                .where(ArcheryResult.session_id.in_(session_ids))
+                .group_by(ArcheryResult.session_id)
+            ).all()
+            counts_map = {row.session_id: int(row.student_count or 0) for row in count_rows}
+
         for session in sessions:
             batch = session.batch
             school = session.school if session.school else (batch.school if batch else None)
             coach_name = session.coach.name if session.coach else None
+            student_count = counts_map.get(session.id, 0)
             summaries.append(
                 ArcherySessionSummary(
                     session_id=session.id,
@@ -152,6 +201,8 @@ class ArcheryService:
                     coach_id=session.coach_id,
                     coach_name=coach_name,
                     date_of_session=session.date_of_session,
+                    distance=session.distance,
+                    student_count=student_count,
                 )
             )
 
@@ -168,10 +219,23 @@ class ArcheryService:
         sessions = db.scalars(query).all()
 
         summaries: List[ArcherySessionSummary] = []
+        session_ids = [session.id for session in sessions]
+        counts_map: dict[int, int] = {}
+        if session_ids:
+            count_rows = db.execute(
+                select(
+                    ArcheryResult.session_id,
+                    func.count(func.distinct(ArcheryResult.student_id)).label("student_count"),
+                )
+                .where(ArcheryResult.session_id.in_(session_ids))
+                .group_by(ArcheryResult.session_id)
+            ).all()
+            counts_map = {row.session_id: int(row.student_count or 0) for row in count_rows}
         for session in sessions:
             batch = session.batch
             school = session.school if session.school else (batch.school if batch else None)
             coach_name = session.coach.name if session.coach else None
+            student_count = counts_map.get(session.id, 0)
             summaries.append(
                 ArcherySessionSummary(
                     session_id=session.id,
@@ -182,6 +246,8 @@ class ArcheryService:
                     coach_id=session.coach_id,
                     coach_name=coach_name,
                     date_of_session=session.date_of_session,
+                    distance=session.distance,
+                    student_count=student_count,
                 )
             )
 
@@ -225,25 +291,37 @@ class ArcheryService:
             ArcheryResultRepository.delete_by_session(db, updated_session.id)
 
             new_results: List[ArcheryResult] = []
+            seen_pairs: set[tuple[int, int]] = set()
             for student_input in results_payload:
                 if valid_student_ids is not None and student_input.student_id not in valid_student_ids:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail=f"Student {student_input.student_id} does not belong to batch {target_batch_id}",
                     )
-                for shot in student_input.shots:
-                    new_results.append(
-                        ArcheryResult(
-                            session_id=updated_session.id,
-                            student_id=student_input.student_id,
-                            x_coordinate=shot.x_coordinate,
-                            y_coordinate=shot.y_coordinate,
-                            score=shot.score,
-                            max_score=shot.max_score,
-                            distance=shot.distance,
-                            arrow_number=shot.arrow_number,
+
+                for round_input in student_input.rounds:
+                    round_number = round_input.number
+                    key = (student_input.student_id, round_number)
+                    if key in seen_pairs:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail=f"Duplicate round {round_number} supplied for student {student_input.student_id}",
                         )
-                    )
+                    seen_pairs.add(key)
+
+                    for shot in round_input.shots:
+                        new_results.append(
+                            ArcheryResult(
+                                session_id=updated_session.id,
+                                student_id=student_input.student_id,
+                                round_number=round_number,
+                                x_coordinate=shot.x_coordinate,
+                                y_coordinate=shot.y_coordinate,
+                                score=shot.score,
+                                max_score=shot.max_score,
+                                arrow_number=shot.arrow_number,
+                            )
+                        )
 
             if new_results:
                 ArcheryResultRepository.create_all(db, new_results)
@@ -383,25 +461,41 @@ class ArcheryService:
         school = getattr(batch, "school", None) if batch else None
 
         results = ArcheryResultRepository.get_by_student(db, student_id)
-        grouped: dict[int, list[ArcheryResult]] = defaultdict(list)
+        grouped: dict[int, dict[int, list[ArcheryResult]]] = defaultdict(lambda: defaultdict(list))
 
         for result in results:
-            grouped[result.session_id].append(result)
+            grouped[result.session_id][result.round_number].append(result)
 
         session_details: List[ArcheryStudentSessionDetail] = []
-        for session_id, shots in grouped.items():
-            session = shots[0].session if shots and shots[0].session else ArcherySessionRepository.get_by_id(db, session_id)
+        for session_id, rounds_map in grouped.items():
+            sample_rounds = next(iter(rounds_map.values())) if rounds_map else []
+            sample_session = sample_rounds[0].session if sample_rounds and sample_rounds[0].session else None
+            session = sample_session or ArcherySessionRepository.get_by_id(db, session_id)
             if not session:
                 continue
             coach_name = session.coach.name if session.coach else None
-            shot_responses = [ArcheryShotResponse.model_validate(shot) for shot in sorted(shots, key=lambda s: s.arrow_number)]
+
+            round_responses: List[ArcheryRoundResponse] = []
+            for round_number, shots in sorted(rounds_map.items(), key=lambda item: item[0]):
+                shot_responses = [
+                    ArcheryShotResponse.model_validate(shot)
+                    for shot in sorted(shots, key=lambda s: s.arrow_number)
+                ]
+                round_responses.append(
+                    ArcheryRoundResponse(
+                        number=round_number,
+                        shots=shot_responses,
+                    )
+                )
+
             session_details.append(
                 ArcheryStudentSessionDetail(
                     session_id=session.id,
                     date_of_session=session.date_of_session,
                     coach_id=session.coach_id,
                     coach_name=coach_name,
-                    shots=shot_responses,
+                    distance=session.distance,
+                    rounds=round_responses,
                 )
             )
 
@@ -441,19 +535,28 @@ class ArcheryService:
             ArcheryResultRepository.delete_for_student_in_session(db, update.session_id, student_id)
 
             new_results: List[ArcheryResult] = []
-            for shot in update.shots:
-                new_results.append(
-                    ArcheryResult(
-                        session_id=update.session_id,
-                        student_id=student_id,
-                        x_coordinate=shot.x_coordinate,
-                        y_coordinate=shot.y_coordinate,
-                        score=shot.score,
-                        max_score=shot.max_score,
-                        distance=shot.distance,
-                        arrow_number=shot.arrow_number,
+            seen_rounds: set[int] = set()
+            for round_input in update.rounds:
+                if round_input.number in seen_rounds:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Duplicate round {round_input.number} supplied for session {update.session_id}",
                     )
-                )
+                seen_rounds.add(round_input.number)
+
+                for shot in round_input.shots:
+                    new_results.append(
+                        ArcheryResult(
+                            session_id=update.session_id,
+                            student_id=student_id,
+                            round_number=round_input.number,
+                            x_coordinate=shot.x_coordinate,
+                            y_coordinate=shot.y_coordinate,
+                            score=shot.score,
+                            max_score=shot.max_score,
+                            arrow_number=shot.arrow_number,
+                        )
+                    )
 
             if new_results:
                 ArcheryResultRepository.create_all(db, new_results)

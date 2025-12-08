@@ -16,6 +16,10 @@ class Student(Base):
     batch = relationship("Batch", back_populates="students")
     physical_results = relationship("PhysicalAssessmentDetail", back_populates="student")
     archery_results = relationship("ArcheryResult", back_populates="student")
+    archery_tournament_results = relationship(
+        "ArcheryTournamentResult",
+        back_populates="student",
+    )
 
     def __repr__(self) -> str:
         return f"<Student(id={self.id}, name='{self.name}')>"

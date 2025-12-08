@@ -38,6 +38,10 @@ class Coach(Base):
     )
     sessions = relationship("PhysicalAssessmentSession", back_populates="coach")
     archery_sessions = relationship("ArcherySession", back_populates="coach")
+    archery_tournament_sessions = relationship(
+        "ArcheryTournamentSession",
+        back_populates="coach",
+    )
 
     batches = association_proxy("batch_assignments", "batch")
     schools = association_proxy("school_assignments", "school")
