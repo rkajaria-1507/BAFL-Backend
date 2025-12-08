@@ -3,8 +3,15 @@ Seed data for exercise level mappings.
 This script populates the exercise_level_mappings table with the fitness assessment criteria.
 
 Run this script after creating the database tables to populate the level mapping data.
-Usage: python -m src.utils.seed_level_mappings
+Usage: python src/utils/seed_level_mappings.py
 """
+
+import sys
+from pathlib import Path
+
+# Add project root to Python path
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
 
 from sqlalchemy.orm import Session
 from src.db.database import SessionLocal, engine
