@@ -14,9 +14,10 @@ from src.schemas.physical_assessment import (
     PhysicalAssessmentLevelMappingResponse,
 )
 from src.services.physical_assessment_service import PhysicalAssessmentService
-from src.api.v1.dependencies.auth import get_current_user, require_permission
+from src.api.v1.dependencies.auth import get_current_user, require_permission, get_current_identity, AuthenticatedIdentity
 from src.db.models.user import User, UserRole
 from src.db.models.permission import PermissionType
+from src.services.permission_service import PermissionService
 
 router = APIRouter(prefix="/physical", tags=["Physical Assessments"])
 
@@ -286,17 +287,27 @@ def delete_session(
 
 @router.get("/level-mappings", response_model=PhysicalAssessmentLevelMappingResponse)
 def get_level_mappings(
-    current_user: User = Depends(require_view_sessions),
+    current_identity: AuthenticatedIdentity = Depends(get_current_identity),
     db: Session = Depends(get_db)
 ):
     """
     Get exercise level mappings for all students across all schools and batches.
     Returns school -> batch -> student -> exercises with average scores, levels, and descriptions.
     Includes all 7 exercises for each student with null values for exercises not performed.
+    
+    - Users (ADMIN/USER): See all data across all schools and batches
+    - Coaches: See only data for schools and batches they are assigned to
     """
-    api_logger.info(f"Fetching level mappings. User: {current_user.username} (ID: {current_user.id})")
+    # Determine if we need to filter by coach
+    coach_id = None
+    if current_identity.coach:
+        coach_id = current_identity.coach.id
+        api_logger.info(f"Fetching level mappings. Coach: {current_identity.coach.username} (ID: {coach_id}) - filtered to assigned schools/batches")
+    else:
+        api_logger.info(f"Fetching level mappings. User: {current_identity.user.username} (ID: {current_identity.user.id}) - all data")
+    
     try:
-        return PhysicalAssessmentService.get_level_mappings(db)
+        return PhysicalAssessmentService.get_level_mappings(db, coach_id=coach_id)
     except Exception as e:
         api_logger.error(f"Error fetching level mappings: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail={"code": "server_error", "message": str(e)})

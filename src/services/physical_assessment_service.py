@@ -986,10 +986,14 @@ class PhysicalAssessmentService:
         return deleted > 0
 
     @staticmethod
-    def get_level_mappings(db: Session):
+    def get_level_mappings(db: Session, coach_id: int = None):
         """
         Get all student exercise level mappings grouped by school, batch, and student.
         Includes all 7 exercises for each student with null values for exercises not performed.
+        
+        Args:
+            db: Database session
+            coach_id: Optional coach ID to filter results to only their assigned schools/batches
         """
         from src.schemas.physical_assessment import (
             PhysicalAssessmentLevelMappingResponse,
@@ -1004,7 +1008,7 @@ class PhysicalAssessmentService:
         ALL_EXERCISES = ["curl_up", "push_up", "sit_and_reach", "walk_600m", "dash_50m", "bow_hold", "plank"]
         
         repo = StudentExerciseAverageRepository(db)
-        data = repo.get_all_level_mappings_with_relations()
+        data = repo.get_all_level_mappings_with_relations(coach_id=coach_id)
         
         # Build coach mapping: batch_id -> list of coach names
         coach_map = defaultdict(list)

@@ -357,16 +357,20 @@ class StudentExerciseAverageRepository:
         self.db.flush()
         return updated_count
 
-    def get_all_level_mappings_with_relations(self):
+    def get_all_level_mappings_with_relations(self, coach_id: Optional[int] = None):
         """
         Get all student exercise averages with related school, batch, student, and coach information.
         Returns data structured for level mapping endpoint.
+        
+        Args:
+            coach_id: If provided, filters results to only schools/batches assigned to this coach
         """
         from src.db.models.school import School
         from src.db.models.batch import Batch
         from src.db.models.student import Student
         from src.db.models.coach import Coach
         from src.db.models.coach_batch import CoachBatch
+        from src.db.models.coach_school import CoachSchool
         
         # Query all student exercise averages with joins
         query = (
@@ -385,9 +389,27 @@ class StudentExerciseAverageRepository:
             .join(School, StudentExerciseAverage.school_id == School.id)
             .join(Batch, StudentExerciseAverage.batch_id == Batch.id)
             .join(Student, StudentExerciseAverage.student_id == Student.id)
-            .order_by(School.name, Batch.batch_name, Student.name, StudentExerciseAverage.exercise_name)
         )
         
+        # If coach_id is provided, filter by coach's assigned schools and batches
+        if coach_id is not None:
+            # Get batches assigned to this coach
+            coach_batch_ids = self.db.query(CoachBatch.batch_id).filter(
+                CoachBatch.coach_id == coach_id
+            ).subquery()
+            
+            # Get schools assigned to this coach
+            coach_school_ids = self.db.query(CoachSchool.school_id).filter(
+                CoachSchool.coach_id == coach_id
+            ).subquery()
+            
+            # Filter to only show data for assigned batches OR assigned schools
+            query = query.filter(
+                (StudentExerciseAverage.batch_id.in_(coach_batch_ids)) |
+                (StudentExerciseAverage.school_id.in_(coach_school_ids))
+            )
+        
+        query = query.order_by(School.name, Batch.batch_name, Student.name, StudentExerciseAverage.exercise_name)
         results = query.all()
         
         # Query all students (even those without exercise data)
@@ -402,9 +424,24 @@ class StudentExerciseAverageRepository:
             )
             .join(Batch, Student.batch_id == Batch.id)
             .join(School, Batch.school_id == School.id)
-            .order_by(School.name, Batch.batch_name, Student.name)
         )
         
+        # Apply same filtering for students
+        if coach_id is not None:
+            coach_batch_ids = self.db.query(CoachBatch.batch_id).filter(
+                CoachBatch.coach_id == coach_id
+            ).subquery()
+            
+            coach_school_ids = self.db.query(CoachSchool.school_id).filter(
+                CoachSchool.coach_id == coach_id
+            ).subquery()
+            
+            all_students_query = all_students_query.filter(
+                (Batch.id.in_(coach_batch_ids)) |
+                (School.id.in_(coach_school_ids))
+            )
+        
+        all_students_query = all_students_query.order_by(School.name, Batch.batch_name, Student.name)
         all_students = all_students_query.all()
         
         # Query coach assignments for all batches
@@ -415,9 +452,17 @@ class StudentExerciseAverageRepository:
             )
             .join(CoachBatch, Batch.id == CoachBatch.batch_id)
             .join(Coach, CoachBatch.coach_id == Coach.id)
-            .order_by(Batch.id, Coach.name)
         )
         
+        # Apply filtering to coach query too
+        if coach_id is not None:
+            coach_batch_ids = self.db.query(CoachBatch.batch_id).filter(
+                CoachBatch.coach_id == coach_id
+            ).subquery()
+            
+            coach_query = coach_query.filter(Batch.id.in_(coach_batch_ids))
+        
+        coach_query = coach_query.order_by(Batch.id, Coach.name)
         coach_results = coach_query.all()
         
         return {
