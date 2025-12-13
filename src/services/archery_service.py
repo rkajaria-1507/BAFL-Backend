@@ -7,6 +7,7 @@ from fastapi import HTTPException, status
 from src.db.models.archery import ArcherySession, ArcheryResult
 from src.db.models.batch import Batch
 from src.db.models.school import School
+from src.db.models.student import Student
 from src.db.models.user import User, UserRole
 from src.db.models.coach_batch import CoachBatch
 from src.db.repositories.archery_repository import ArcherySessionRepository, ArcheryResultRepository
