@@ -13,7 +13,7 @@ from src.core.logging import db_logger
 engine = create_engine(
     settings.DATABASE_URL,
     connect_args={"check_same_thread": False} if "sqlite" in settings.DATABASE_URL else {},
-    echo=settings.DEBUG,
+    echo=False,
     pool_pre_ping=True
 )
 
@@ -30,7 +30,22 @@ Base = declarative_base()
 # Import all models to register with Base
 from src.db.models.user import User, RefreshToken
 from src.db.models.permission import Permission, UserPermission
-from src.db.models.role_permission import RolePermission
+from src.db.models.school import School
+from src.db.models.coach import Coach
+from src.db.models.batch import Batch
+from src.db.models.batch_schedule import BatchSchedule
+from src.db.models.coach_batch import CoachBatch
+from src.db.models.coach_school import CoachSchool
+from src.db.models.student import Student
+from src.db.models.physical_assessment import PhysicalAssessmentSession, PhysicalAssessmentDetail
+from src.db.models.exercise_level_mapping import ExerciseLevelMapping
+from src.db.models.student_exercise_average import StudentExerciseAverage
+from src.db.models.archery import ArcherySession, ArcheryResult
+from src.db.models.archery_tournament import (
+    ArcheryTournamentSession,
+    ArcheryTournamentResult,
+    ArcheryTournamentCategory,
+)
 
 
 def get_db() -> Generator[Session, None, None]:
