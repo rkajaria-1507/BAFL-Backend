@@ -709,6 +709,8 @@ class PhysicalAssessmentService:
         if user.role == UserRole.COACH:
             coach_profile = getattr(user, "coach_profile", None)
             if not coach_profile:
+                coach_profile = CoachRepository.get_by_username(db, user.username)
+            if not coach_profile:
                 return PreCreateResponse(batches=[])
             # Filter batches assigned to this coach
             query = query.join(CoachBatch).filter(CoachBatch.coach_id == coach_profile.id)
