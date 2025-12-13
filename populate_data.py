@@ -40,25 +40,54 @@ def populate_database():
         db.refresh(acharya)
         api_logger.info(f"Created schools: {avasara.name} (ID: {avasara.id}), {acharya.name} (ID: {acharya.id})")
         
-        # Create Coaches
-        api_logger.info("Creating coaches...")
+        # Create Coaches (and corresponding Users with COACH role)
+        api_logger.info("Creating coaches and corresponding users...")
+        
+        # Coach 1
+        coach1_user = User(
+            username="coach1",
+            password=PasswordHandler.hash("password1"),
+            role=UserRole.COACH,
+            is_active=True
+        )
+        db.add(coach1_user)
+        db.commit()
+        db.refresh(coach1_user)
+        
         coach1 = Coach(
             name="Coach One",
             username="coach1",
             password=PasswordHandler.hash("password1"),
+            is_active=True,
+            user_id=coach1_user.id
+        )
+        db.add(coach1)
+        db.commit()
+        db.refresh(coach1)
+        
+        # Coach 2
+        coach2_user = User(
+            username="coach2",
+            password=PasswordHandler.hash("password2"),
+            role=UserRole.COACH,
             is_active=True
         )
+        db.add(coach2_user)
+        db.commit()
+        db.refresh(coach2_user)
+        
         coach2 = Coach(
             name="Coach Two",
             username="coach2",
             password=PasswordHandler.hash("password2"),
-            is_active=True
+            is_active=True,
+            user_id=coach2_user.id
         )
-        db.add_all([coach1, coach2])
+        db.add(coach2)
         db.commit()
-        db.refresh(coach1)
         db.refresh(coach2)
-        api_logger.info(f"Created coaches: {coach1.name} (ID: {coach1.id}), {coach2.name} (ID: {coach2.id})")
+        
+        api_logger.info(f"Created coaches: {coach1.name} (ID: {coach1.id}, User ID: {coach1_user.id}), {coach2.name} (ID: {coach2.id}, User ID: {coach2_user.id})")
         
         # Assign coaches to schools
         api_logger.info("Assigning coaches to schools...")
