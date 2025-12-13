@@ -14,6 +14,7 @@ from src.schemas.archery import (
 from src.schemas.physical_assessment import PreCreateResponse
 from src.services.archery_service import ArcheryService
 from src.api.v1.dependencies.auth import get_current_user
+from src.api.v1.utils.coach import get_coach_profile_or_403
 from src.db.models.user import User, UserRole
 
 router = APIRouter(prefix="/archery", tags=["Archery - Practice"])
@@ -34,6 +35,12 @@ def create_session(
     # Basic role check
     if current_user.role not in [UserRole.ADMIN, UserRole.COACH]:
         raise HTTPException(status_code=403, detail="Not authorized")
+    if current_user.role == UserRole.COACH:
+        coach_profile = get_coach_profile_or_403(current_user, db)
+        if payload.coach_id and payload.coach_id != coach_profile.id:
+            raise HTTPException(status_code=403, detail="Coach may only create sessions for their own id")
+        if not payload.coach_id:
+            payload.coach_id = coach_profile.id
     
     return ArcheryService.create_session(db, payload)
 
@@ -48,29 +55,29 @@ def get_pre_create_data(
     return ArcheryService.get_pre_create_data(db, current_user)
 
 
-@router.get("/sessions/admin-view", response_model=ArcherySessionSummaryResponse)
-def get_admin_view_sessions(
+@router.get("/sessions", response_model=ArcherySessionSummaryResponse)
+def get_sessions_view(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=403, detail="Admin access required")
-    api_logger.info(f"Fetching archery sessions (admin view). User: {current_user.username}")
+    if current_user.role == UserRole.COACH:
+        coach_profile = get_coach_profile_or_403(current_user, db)
+        api_logger.info(f"Fetching archery sessions (coach view). User: {current_user.username}")
+        return ArcheryService.get_coach_view_sessions(db, coach_profile.id)
+
+    api_logger.info(f"Fetching archery sessions (general view). User: {current_user.username}")
     return ArcheryService.get_admin_view_sessions(db)
 
 
-@router.get("/sessions/coach-view", response_model=ArcherySessionSummaryResponse)
-def get_coach_view_sessions(
+@router.get("/sessions/view", response_model=ArcherySessionSummaryResponse, include_in_schema=False)
+@router.get("/sessions/admin-view", response_model=ArcherySessionSummaryResponse, include_in_schema=False)
+@router.get("/sessions/coach-view", response_model=ArcherySessionSummaryResponse, include_in_schema=False)
+def get_sessions_view_alias(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    if current_user.role != UserRole.COACH:
-        raise HTTPException(status_code=403, detail="Coach access required")
-    coach_profile = getattr(current_user, "coach_profile", None)
-    if not coach_profile:
-        raise HTTPException(status_code=403, detail="Coach profile not found")
-    api_logger.info(f"Fetching archery sessions (coach view). User: {current_user.username}")
-    return ArcheryService.get_coach_view_sessions(db, coach_profile.id)
+    """Backward-compatible aliases for legacy session view routes."""
+    return get_sessions_view(current_user=current_user, db=db)
 
 
 @router.get("/sessions/{session_id}", response_model=ArcherySessionResponse)
@@ -84,9 +91,7 @@ def get_session(
         raise HTTPException(status_code=404, detail="Session not found")
 
     if current_user.role == UserRole.COACH:
-        coach_profile = getattr(current_user, "coach_profile", None)
-        if not coach_profile:
-            raise HTTPException(status_code=403, detail="Coach profile not found")
+        coach_profile = get_coach_profile_or_403(current_user, db)
         assigned_batch_ids = {
             assignment.batch_id
             for assignment in getattr(coach_profile, "batch_assignments", [])
@@ -113,9 +118,7 @@ def update_session(
         raise HTTPException(status_code=404, detail="Session not found")
 
     if current_user.role == UserRole.COACH:
-        coach_profile = getattr(current_user, "coach_profile", None)
-        if not coach_profile:
-            raise HTTPException(status_code=403, detail="Coach profile not found")
+        coach_profile = get_coach_profile_or_403(current_user, db)
         assigned_batch_ids = {
             assignment.batch_id
             for assignment in getattr(coach_profile, "batch_assignments", [])
@@ -144,9 +147,7 @@ def delete_session(
         raise HTTPException(status_code=404, detail="Session not found")
 
     if current_user.role == UserRole.COACH:
-        coach_profile = getattr(current_user, "coach_profile", None)
-        if not coach_profile:
-            raise HTTPException(status_code=403, detail="Coach profile not found")
+        coach_profile = get_coach_profile_or_403(current_user, db)
         assigned_batch_ids = {
             assignment.batch_id
             for assignment in getattr(coach_profile, "batch_assignments", [])
@@ -158,27 +159,16 @@ def delete_session(
     ArcheryService.delete_session(db, session_id)
     return None
 
-@router.get("/students/admin-view", response_model=ArcheryStudentSummaryResponse)
-def get_admin_view_students(
+@router.get("/students", response_model=ArcheryStudentSummaryResponse)
+def get_students_view(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=403, detail="Admin access required")
+    if current_user.role == UserRole.COACH:
+        coach_profile = get_coach_profile_or_403(current_user, db)
+        return ArcheryService.get_coach_view_students(db, coach_profile.id)
+
     return ArcheryService.get_admin_view_students(db)
-
-
-@router.get("/students/coach-view", response_model=ArcheryStudentSummaryResponse)
-def get_coach_view_students(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    if current_user.role != UserRole.COACH:
-        raise HTTPException(status_code=403, detail="Coach access required")
-    coach_profile = getattr(current_user, "coach_profile", None)
-    if not coach_profile:
-        raise HTTPException(status_code=403, detail="Coach profile not found")
-    return ArcheryService.get_coach_view_students(db, coach_profile.id)
 
 
 @router.get("/students/{student_id}", response_model=ArcheryStudentDetailResponse)
@@ -192,9 +182,7 @@ def get_student_detail(
         raise HTTPException(status_code=404, detail="Student not found")
 
     if current_user.role == UserRole.COACH:
-        coach_profile = getattr(current_user, "coach_profile", None)
-        if not coach_profile:
-            raise HTTPException(status_code=403, detail="Coach profile not found")
+        coach_profile = get_coach_profile_or_403(current_user, db)
         assigned_batch_ids = {
             assignment.batch_id
             for assignment in getattr(coach_profile, "batch_assignments", [])
@@ -217,9 +205,7 @@ def update_student_results(
         raise HTTPException(status_code=403, detail="Not authorized")
 
     if current_user.role == UserRole.COACH:
-        coach_profile = getattr(current_user, "coach_profile", None)
-        if not coach_profile:
-            raise HTTPException(status_code=403, detail="Coach profile not found")
+        coach_profile = get_coach_profile_or_403(current_user, db)
         assigned_batch_ids = {
             assignment.batch_id
             for assignment in getattr(coach_profile, "batch_assignments", [])
@@ -245,9 +231,7 @@ def delete_student_results(
         raise HTTPException(status_code=404, detail="Student not found")
 
     if current_user.role == UserRole.COACH:
-        coach_profile = getattr(current_user, "coach_profile", None)
-        if not coach_profile:
-            raise HTTPException(status_code=403, detail="Coach profile not found")
+        coach_profile = get_coach_profile_or_403(current_user, db)
         assigned_batch_ids = {
             assignment.batch_id
             for assignment in getattr(coach_profile, "batch_assignments", [])
