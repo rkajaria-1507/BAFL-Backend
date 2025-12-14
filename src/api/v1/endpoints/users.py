@@ -1,7 +1,7 @@
 """
 User management endpoints for creating, viewing, updating, and deleting users.
 """
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Path
 from typing import Optional
 from json import JSONDecodeError
 from starlette.datastructures import FormData
@@ -442,7 +442,7 @@ def get_current_user_info(
 
 @router.get("/{user_id}", response_model=UserResponse, status_code=status.HTTP_200_OK)
 def get_user(
-    user_id: int,
+    user_id: int = Path(..., description="User ID"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> UserResponse:
@@ -553,8 +553,8 @@ def perform_update_user(
     }
 )
 async def update_user(
-    user_id: int,
     request: Request,
+    user_id: int = Path(..., description="User ID"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> UserResponse:
@@ -580,8 +580,8 @@ async def update_user(
     include_in_schema=False
 )
 async def update_user_json_legacy(
-    user_id: int,
     user_update: UserUpdate,
+    user_id: int = Path(..., description="User ID"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> UserResponse:
@@ -600,7 +600,7 @@ async def update_user_json_legacy(
 
 @router.delete("/{user_id}", response_model=MessageResponse, status_code=status.HTTP_200_OK)
 def delete_user(
-    user_id: int,
+    user_id: int = Path(..., description="User ID"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> MessageResponse:

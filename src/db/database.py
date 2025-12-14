@@ -10,11 +10,15 @@ from src.core.logging import db_logger
 
 
 # Create SQLAlchemy engine
+# Using Supabase session pooler - disable client-side pooling since pooling is handled by Supabase
 engine = create_engine(
     settings.DATABASE_URL,
-    connect_args={"check_same_thread": False} if "sqlite" in settings.DATABASE_URL else {},
     echo=False,
-    pool_pre_ping=True
+    pool_pre_ping=True,
+    pool_size=5,  # Small pool size since pooling is handled by Supabase
+    max_overflow=10,  # Allow some overflow connections
+    pool_recycle=300,  # Recycle connections every 5 minutes
+    pool_timeout=30  # Connection timeout in seconds
 )
 
 # Create session factory
@@ -30,6 +34,7 @@ Base = declarative_base()
 # Import all models to register with Base
 from src.db.models.user import User, RefreshToken
 from src.db.models.permission import Permission, UserPermission
+from src.db.models.role_permission import RolePermission
 from src.db.models.school import School
 from src.db.models.coach import Coach
 from src.db.models.batch import Batch

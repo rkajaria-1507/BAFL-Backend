@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Path
 from sqlalchemy.orm import Session
 
 from src.api.v1.dependencies.auth import get_current_user
@@ -57,7 +57,7 @@ def get_coaches(
 
 @router.get("/{coach_id}", response_model=CoachContractDetails)
 def get_coach(
-    coach_id: int,
+    coach_id: int = Path(..., description="Coach ID"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -70,8 +70,8 @@ def get_coach(
 
 @router.put("/{coach_id}", response_model=CoachUpdateResponse)
 def update_coach(
-    coach_id: int,
     payload: CoachUpdateRequest,
+    coach_id: int = Path(..., description="Coach ID"),
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> CoachUpdateResponse:
@@ -86,7 +86,7 @@ def update_coach(
 
 @router.delete("/{coach_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_coach(
-    coach_id: int,
+    coach_id: int = Path(..., description="Coach ID"),
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):

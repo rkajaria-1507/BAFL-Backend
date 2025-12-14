@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Path
 from sqlalchemy.orm import Session
 from src.db.database import get_db
 from src.core.logging import api_logger
@@ -59,7 +59,7 @@ def get_students(
 
 @router.get("/{student_id}", response_model=StudentResponse)
 def get_student(
-    student_id: int,
+    student_id: int = Path(..., description="Student ID"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -72,8 +72,8 @@ def get_student(
 
 @router.put("/{student_id}", response_model=StudentResponse, openapi_extra={"requestBody": {"content": {"application/json": {"schema": StudentUpdate.model_json_schema()}}, "required": True}})
 async def update_student(
-    student_id: int,
     request: Request,
+    student_id: int = Path(..., description="Student ID"),
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
@@ -92,7 +92,7 @@ async def update_student(
 
 @router.delete("/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_student(
-    student_id: int,
+    student_id: int = Path(..., description="Student ID"),
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):

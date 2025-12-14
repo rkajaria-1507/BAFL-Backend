@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Path
 from sqlalchemy.orm import Session
 from src.db.database import get_db
 from src.core.logging import api_logger
@@ -82,7 +82,7 @@ def get_sessions_view_alias(
 
 @router.get("/sessions/{session_id}", response_model=ArcherySessionResponse)
 def get_session(
-    session_id: int,
+    session_id: int = Path(..., description="Session ID"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -105,8 +105,8 @@ def get_session(
 
 @router.put("/sessions/{session_id}", response_model=ArcherySessionResponse)
 def update_session(
-    session_id: int,
     payload: ArcherySessionUpdate,
+    session_id: int = Path(..., description="Session ID"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -135,7 +135,7 @@ def update_session(
 
 @router.delete("/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_session(
-    session_id: int,
+    session_id: int = Path(..., description="Session ID"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -173,7 +173,7 @@ def get_students_view(
 
 @router.get("/students/{student_id}", response_model=ArcheryStudentDetailResponse)
 def get_student_detail(
-    student_id: int,
+    student_id: int = Path(..., description="Student ID"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -196,8 +196,8 @@ def get_student_detail(
 
 @router.put("/students/{student_id}", response_model=ArcheryStudentDetailResponse)
 def update_student_results(
-    student_id: int,
     payload: ArcheryStudentUpdate,
+    student_id: int = Path(..., description="Student ID"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -219,7 +219,7 @@ def update_student_results(
 
 @router.delete("/students/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_student_results(
-    student_id: int,
+    student_id: int = Path(..., description="Student ID"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):

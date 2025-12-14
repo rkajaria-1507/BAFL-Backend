@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Path
 from sqlalchemy.orm import Session
 
 from src.api.v1.dependencies.auth import get_current_user
@@ -56,7 +56,7 @@ def get_batches(
 
 @router.get("/{batch_id}", response_model=BatchDetail)
 def get_batch(
-    batch_id: int,
+    batch_id: int = Path(..., description="Batch ID"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -69,8 +69,8 @@ def get_batch(
 
 @router.put("/{batch_id}", response_model=BatchDetail)
 def update_batch(
-    batch_id: int,
     payload: BatchUpdateRequest,
+    batch_id: int = Path(..., description="Batch ID"),
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
@@ -85,7 +85,7 @@ def update_batch(
 
 @router.delete("/{batch_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_batch(
-    batch_id: int,
+    batch_id: int = Path(..., description="Batch ID"),
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):

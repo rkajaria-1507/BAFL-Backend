@@ -56,8 +56,12 @@ def get_current_identity(
         raise credentials_exception
 
     if subject_type == "user":
-        user_id = payload.get("user_id")
-        if user_id is None:
+        user_id_str = payload.get("user_id")
+        if user_id_str is None:
+            raise credentials_exception
+        try:
+            user_id = int(user_id_str)  # Convert string to int
+        except (ValueError, AttributeError):
             raise credentials_exception
         user = UserRepository.get_by_id(db, user_id)
         if user is None:
@@ -70,8 +74,12 @@ def get_current_identity(
             )
         return AuthenticatedIdentity(subject_type="user", user=user)
 
-    coach_id = payload.get("coach_id")
-    if coach_id is None:
+    coach_id_str = payload.get("coach_id")
+    if coach_id_str is None:
+        raise credentials_exception
+    try:
+        coach_id = int(coach_id_str)  # Convert string to int
+    except (ValueError, AttributeError):
         raise credentials_exception
     coach = CoachRepository.get_by_id(db, coach_id)
     if coach is None:

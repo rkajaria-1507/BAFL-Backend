@@ -12,6 +12,7 @@ from src.db.repositories.permission_repository import (
     UserPermissionRepository
 )
 from src.core.logging import api_logger
+from src.utils.role_permissions_config import ROLE_PERMISSIONS
 
 
 class PermissionService:
@@ -24,39 +25,9 @@ class PermissionService:
         def value(self) -> str:  # pragma: no cover - trivial accessor
             return str(self)
 
+    # Use the comprehensive role permissions from config
     ROLE_BASE_PERMISSIONS = {
-        UserRole.ADMIN: (
-            PermissionType.CREATE_USER,
-            PermissionType.CREATE_COACH,
-            PermissionType.CREATE_ADMIN,
-            PermissionType.DELETE_USER,
-            PermissionType.DELETE_COACH,
-            PermissionType.DELETE_ADMIN,
-            PermissionType.VIEW_ALL_USERS,
-            PermissionType.EDIT_ALL_USERS,
-            PermissionType.ASSIGN_PERMISSIONS,
-            PermissionType.REVOKE_PERMISSIONS,
-            PermissionType.VIEW_PERMISSIONS,
-            PermissionType.VIEW_OWN_PROFILE,
-            PermissionType.EDIT_OWN_PROFILE,
-            PermissionType.PHYSICAL_SESSIONS_VIEW,
-            PermissionType.PHYSICAL_SESSIONS_EDIT,
-            PermissionType.PHYSICAL_SESSIONS_ADD,
-        ),
-        UserRole.USER: (
-            PermissionType.VIEW_OWN_PROFILE,
-            PermissionType.EDIT_OWN_PROFILE,
-            PermissionType.PHYSICAL_SESSIONS_VIEW,
-            PermissionType.PHYSICAL_SESSIONS_EDIT,
-            PermissionType.PHYSICAL_SESSIONS_ADD,
-        ),
-        UserRole.COACH: (
-            PermissionType.VIEW_OWN_PROFILE,
-            PermissionType.EDIT_OWN_PROFILE,
-            PermissionType.PHYSICAL_SESSIONS_VIEW,
-            PermissionType.PHYSICAL_SESSIONS_EDIT,
-            PermissionType.PHYSICAL_SESSIONS_ADD,
-        ),
+        role: tuple(perms) for role, perms in ROLE_PERMISSIONS.items()
     }
 
     @dataclass(frozen=True)

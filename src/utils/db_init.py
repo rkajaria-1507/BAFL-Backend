@@ -5,12 +5,14 @@ from sqlalchemy.orm import Session
 
 from src.db.database import SessionLocal, init_database
 from src.db.models.user import User, UserRole
+from src.db.models.role_permission import RolePermission
 from src.db.repositories.user_repository import UserRepository
 from src.db.repositories.permission_repository import PermissionRepository
 from src.core.security import PasswordHandler
 from src.core.logging import db_logger, api_logger
 from src.core.config import settings
 from src.db.models.permission import PermissionType
+from src.utils.role_permissions_config import ROLE_PERMISSIONS
 
 
 DEFAULT_PERMISSION_DEFINITIONS = tuple(perm.value for perm in PermissionType)
@@ -63,8 +65,33 @@ def create_initial_admin(db: Session) -> None:
 
 
 def create_default_role_permissions(db: Session) -> None:
-    """Compatibility shim; explicit role-permission seeding no longer required."""
-    api_logger.info("Skipping legacy role-permission seeding; handled dynamically.")
+    """Create default role-permission mappings in the database."""
+    api_logger.info("Creating default role-permission mappings...")
+    
+    # Clear existing role permissions to avoid duplicates
+    db.query(RolePermission).delete()
+    db.commit()
+    
+    created_count = 0
+    
+    for role, permissions in ROLE_PERMISSIONS.items():
+        for permission_type in permissions:
+            # Get the permission from database
+            permission = PermissionRepository.get_by_name(db, permission_type.value)
+            
+            if permission:
+                # Create role-permission mapping
+                role_perm = RolePermission(
+                    role=role,
+                    permission_id=permission.id
+                )
+                db.add(role_perm)
+                created_count += 1
+            else:
+                api_logger.warning(f"Permission not found: {permission_type.value}")
+    
+    db.commit()
+    api_logger.info(f"Created {created_count} role-permission mappings")
 
 
 def setup_database() -> None:
@@ -81,6 +108,9 @@ def setup_database() -> None:
         try:
             # Create permissions first
             create_initial_permissions(db)
+            
+            # Create default role-permission mappings
+            create_default_role_permissions(db)
             
             # Create initial admin
             create_initial_admin(db)

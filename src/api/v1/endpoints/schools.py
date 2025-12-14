@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Path
 from sqlalchemy.orm import Session
 
 from src.api.v1.dependencies.auth import get_current_user
@@ -42,7 +42,7 @@ def get_schools(
 
 @router.get("/{school_id}", response_model=SchoolResponse)
 def get_school(
-    school_id: int,
+    school_id: int = Path(..., description="School ID"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -55,8 +55,8 @@ def get_school(
 
 @router.put("/{school_id}", response_model=SchoolResponse)
 def update_school(
-    school_id: int,
     payload: SchoolUpdate,
+    school_id: int = Path(..., description="School ID"),
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
@@ -74,7 +74,7 @@ def update_school(
 
 @router.delete("/{school_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_school(
-    school_id: int,
+    school_id: int = Path(..., description="School ID"),
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):

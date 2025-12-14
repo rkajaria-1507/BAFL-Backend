@@ -50,18 +50,24 @@ class Settings(BaseSettings):
     @field_validator('DATABASE_URL', mode='before')
     @classmethod
     def normalize_database_url(cls, v: str) -> str:
-        if isinstance(v, str) and v.startswith("sqlite:///"):
-            # Extract path/query components to support URLs like sqlite:///./db.sqlite?timeout=10
-            path_part, separator, query = v[len("sqlite:///"):].partition("?")
+        if isinstance(v, str):
+            # Fix Supabase/Postgres URLs: SQLAlchemy 2.0+ requires postgresql:// not postgres://
+            if v.startswith("postgres://"):
+                v = v.replace("postgres://", "postgresql://", 1)
+            
+            # Legacy SQLite support (kept for backward compatibility)
+            if v.startswith("sqlite:///"):
+                # Extract path/query components to support URLs like sqlite:///./db.sqlite?timeout=10
+                path_part, separator, query = v[len("sqlite:///"):].partition("?")
 
-            if path_part and path_part != ":memory:":
-                candidate_path = Path(path_part)
-                if not candidate_path.is_absolute():
-                    absolute_path = (BASE_DIR / candidate_path).resolve()
-                    normalized = f"sqlite:///{absolute_path.as_posix()}"
-                    if separator:
-                        normalized = f"{normalized}?{query}"
-                    return normalized
+                if path_part and path_part != ":memory:":
+                    candidate_path = Path(path_part)
+                    if not candidate_path.is_absolute():
+                        absolute_path = (BASE_DIR / candidate_path).resolve()
+                        normalized = f"sqlite:///{absolute_path.as_posix()}"
+                        if separator:
+                            normalized = f"{normalized}?{query}"
+                        return normalized
         return v
 
     @field_validator('CORS_ORIGINS', 'CORS_ALLOW_METHODS', 'CORS_ALLOW_HEADERS', mode='before')

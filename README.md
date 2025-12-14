@@ -137,10 +137,25 @@ The application will automatically:
 
 ## 📚 API Documentation
 
+### Interactive Documentation
+
 Once running, access:
 - **Swagger UI**: http://localhost:4256/docs
 - **ReDoc**: http://localhost:4256/redoc
 - **Health Check**: http://localhost:4256/health
+
+### Complete API Reference
+
+For a comprehensive list of all API endpoints with detailed documentation, see [API_ENDPOINTS.md](API_ENDPOINTS.md).
+
+This includes:
+- Authentication endpoints
+- User and permission management
+- Coach, student, school, and batch management
+- Physical assessment endpoints
+- Archery practice and tournament endpoints
+- Request/response examples
+- Error codes and authentication details
 
 ## 👥 Roles & Permissions
 
@@ -181,35 +196,27 @@ Once running, access:
 
 The Admin can assign additional permissions to users beyond their role defaults, enabling fine-grained access control.
 
-## 🔌 API Endpoints
+## 🔌 API Endpoints Overview
 
-### Authentication (`/api/v1/auth`)
+The backend provides RESTful API endpoints organized into the following modules:
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST | `/login` | Login and get tokens | No |
-| POST | `/refresh` | Refresh access token | No |
-| POST | `/logout` | Logout and revoke token | Yes |
+### Core Modules
+- **Authentication** (`/api/v1/auth`) - Login, token refresh, logout
+- **User Management** (`/api/v1/users`) - CRUD operations for users
+- **Permission Management** (`/api/v1/permissions`) - Assign/revoke permissions
 
-### User Management (`/api/v1/users`)
+### Academic Management
+- **Coach Management** (`/api/v1/coaches`) - Manage coaching staff
+- **Student Management** (`/api/v1/students`) - Student records and profiles
+- **School Management** (`/api/v1/schools`) - School information
+- **Batch Management** (`/api/v1/batches`) - Class/batch organization
 
-| Method | Endpoint | Description | Auth Required | Permission |
-|--------|----------|-------------|---------------|------------|
-| POST | `/` | Create new user | Yes | Role-based |
-| GET | `/` | List all users | Yes | `view_users` |
-| GET | `/me` | Get current user info | Yes | None |
-| GET | `/{user_id}` | Get specific user | Yes | `view_users` |
-| PUT | `/{user_id}` | Update user | Yes | `edit_user` |
-| DELETE | `/{user_id}` | Delete user | Yes | `delete_user` |
+### Assessment & Training
+- **Physical Assessments** (`/api/v1/physical`) - Physical fitness tracking
+- **Archery Practice** (`/api/v1/archery`) - Practice session management
+- **Archery Tournaments** (`/api/v1/archery/tournaments`) - Tournament records
 
-### Permission Management (`/api/v1/permissions`)
-
-| Method | Endpoint | Description | Auth Required | Permission |
-|--------|----------|-------------|---------------|------------|
-| GET | `/` | List all permissions | Yes | `view_permissions` |
-| GET | `/user/{user_id}` | Get user permissions | Yes | `view_permissions` |
-| POST | `/assign` | Assign permission | Yes | `assign_permissions` |
-| POST | `/revoke` | Revoke permission | Yes | `revoke_permissions` |
+**📘 For complete endpoint documentation with request/response examples, see [API_ENDPOINTS.md](API_ENDPOINTS.md)**
 
 ## 📖 Usage Examples
 

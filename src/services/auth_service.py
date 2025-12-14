@@ -75,12 +75,12 @@ class AuthService:
 
         if principal_type == "user" and isinstance(principal, User):
             payload.update({
-                "user_id": principal.id,
+                "user_id": str(principal.id),  # Convert int to string for JWT
                 "role": principal.role.value,
             })
         elif principal_type == "coach" and isinstance(principal, Coach):
             payload.update({
-                "coach_id": principal.id,
+                "coach_id": str(principal.id),  # Convert int to string for JWT
             })
 
         return payload

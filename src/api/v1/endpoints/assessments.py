@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Path
 from sqlalchemy.orm import Session
 
 from src.api.v1.dependencies.auth import (
@@ -120,7 +120,7 @@ def get_sessions_view_alias(
 
 @router.get("/sessions/{session_id}", response_model=PhysicalAssessmentSessionResponse)
 def get_session(
-    session_id: int,
+    session_id: int = Path(..., description="Session ID"),
     current_user: User = Depends(require_view_sessions),
     db: Session = Depends(get_db),
 ):
@@ -167,7 +167,7 @@ def get_students_view(
 
 @router.get("/students/{student_id}", response_model=PhysicalAssessmentStudentDetailResponse)
 def get_student_detail(
-    student_id: int,
+    student_id: int = Path(..., description="Student ID"),
     current_user: User = Depends(require_view_sessions),
     db: Session = Depends(get_db),
 ):
@@ -195,8 +195,8 @@ def get_student_detail(
 
 @router.put("/students/{student_id}", response_model=PhysicalAssessmentStudentDetailResponse)
 def update_student_results(
-    student_id: int,
     payload: PhysicalAssessmentStudentUpdate,
+    student_id: int = Path(..., description="Student ID"),
     current_user: User = Depends(require_edit_sessions),
     db: Session = Depends(get_db),
 ):
@@ -222,7 +222,7 @@ def update_student_results(
 
 @router.delete("/students/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_student_results(
-    student_id: int,
+    student_id: int = Path(..., description="Student ID"),
     current_user: User = Depends(require_edit_sessions),
     db: Session = Depends(get_db),
 ):
@@ -255,8 +255,8 @@ def delete_student_results(
 
 @router.put("/sessions/{session_id}", response_model=PhysicalAssessmentSessionResponse)
 def update_session(
-    session_id: int,
     payload: PhysicalAssessmentSessionUpdate,
+    session_id: int = Path(..., description="Session ID"),
     current_user: User = Depends(require_edit_sessions),
     db: Session = Depends(get_db),
 ):
@@ -285,7 +285,7 @@ def update_session(
 
 @router.delete("/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_session(
-    session_id: int,
+    session_id: int = Path(..., description="Session ID"),
     current_user: User = Depends(require_edit_sessions),
     db: Session = Depends(get_db),
 ):

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Path
 from sqlalchemy.orm import Session
 
 from src.api.v1.dependencies.auth import get_current_user
@@ -42,7 +42,7 @@ def create_tournament_category(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def delete_tournament_category(
-    category_id: int,
+    category_id: int = Path(..., description="Tournament Category ID"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -134,7 +134,7 @@ def get_tournament_sessions_alias(
     response_model=ArcheryTournamentSessionResponse,
 )
 def get_tournament_session(
-    session_id: int,
+    session_id: int = Path(..., description="Tournament Session ID"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -160,8 +160,8 @@ def get_tournament_session(
     response_model=ArcheryTournamentSessionResponse,
 )
 def update_tournament_session(
-    session_id: int,
     payload: ArcheryTournamentSessionUpdate,
+    session_id: int = Path(..., description="Tournament Session ID"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -193,7 +193,7 @@ def update_tournament_session(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def delete_tournament_session(
-    session_id: int,
+    session_id: int = Path(..., description="Tournament Session ID"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
