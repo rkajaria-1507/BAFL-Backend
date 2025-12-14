@@ -1,373 +1,270 @@
-# BAFL Backend API# BAFL-Backend
+# BAFL Backend API
 
+A professional, high-performance FastAPI backend for the BAFL (Bangalore Archery for Life) platform with JWT authentication, role-based access control, and comprehensive sports management features.
 
+## 🚀 Key Features
 
-A professional, scalable FastAPI backend with JWT authentication, role-based access control, and granular permission management.This is the backend for the BAFL website for the admins and coaches.
+- **Clean Architecture**: Separation of concerns with repository, service, and API layers
+- **JWT Authentication**: Secure access and refresh token management
+- **Role-Based Access Control**: 77 granular permissions across 10 categories
+- **Sports Management**: Physical assessments, archery sessions, and tournament tracking
+- **Performance Optimized**: NullPool configuration, eager loading to prevent N+1 queries
+- **Comprehensive Logging**: Separate logs for API, auth, database, and errors
+- **Type Safety**: Full Pydantic validation and SQLAlchemy 2.0 type hints
+- **Database**: Supabase PostgreSQL with session pooler support
 
+## 📋 Prerequisites
 
+- **Python 3.12** (required for consistency)
+- **Conda** (recommended for environment management)
+- **Supabase Account** (for production database)
 
-## 🚀 Features## Python Version
+## ⚡ Quick Start
 
-
-
-- **Clean Architecture**: Properly structured with separation of concernsThis project uses **Python 3.12** (the latest stable version). All developers must use Python 3.12 for consistency.
-
-- **JWT Authentication**: Secure login with access and refresh tokens
-
-- **Role-Based Access Control**: Admin, User, and Coach roles**We strongly recommend using Conda for environment management.** See [CONDA_SETUP.md](CONDA_SETUP.md) for detailed setup instructions.
-
-- **Custom Permissions**: Granular permission assignment and revocation
-
-- **Comprehensive Logging**: Separate logs for API, auth, database, and errors## Quick Setup
-
-- **Type Safety**: Full Pydantic validation and type hints
-
-- **Repository Pattern**: Clean data access layer```bash
-
-- **Service Layer**: Business logic separation# Using Conda (recommended)
-
+```bash
+# Create and activate environment
 conda env create -f environment.yml
+conda activate bafl-backend
 
-## 📁 Project Structureconda activate bafl-backend
+# Verify Python version
+python --version  # Should show 3.12.x
 
-
-
-```# Verify Python version
-
-backend/python --version  # Should show 3.12.x
-
-├── src/```
-
-│   ├── api/                      # API layer
-
-│   │   └── v1/                   # API version 1## Getting Started
-
-│   │       ├── dependencies/     # Route dependencies (auth, etc.)
-
-│   │       ├── endpoints/        # Route handlers<!-- Add your project-specific documentation here -->
-
-│   │       └── router.py         # API router aggregation
-
-│   ├── core/                     # Core functionality## Development
-
-│   │   ├── config.py             # Application configuration
-
-│   │   ├── logging.py            # Logging setupFor information about the CI/CD pipeline, branch protection, and development workflow, please see [CI/CD Setup Guide](CI_CD_SETUP.md).
-
-│   │   └── security.py           # Security utilities (JWT, bcrypt)
-│   ├── db/                       # Database layer
-│   │   ├── models/               # SQLAlchemy models
-│   │   │   ├── user.py           # User & RefreshToken models
-│   │   │   └── permission.py    # Permission models
-│   │   ├── repositories/         # Data access layer
-│   │   │   ├── user_repository.py
-│   │   │   └── permission_repository.py
-│   │   └── database.py           # DB connection & session
-│   ├── schemas/                  # Pydantic schemas
-│   │   ├── auth.py               # Auth request/response schemas
-│   │   ├── user.py               # User schemas
-│   │   ├── permission.py         # Permission schemas
-│   │   └── common.py             # Common schemas
-│   ├── services/                 # Business logic
-│   │   ├── auth_service.py       # Authentication logic
-│   │   ├── user_service.py       # User management logic
-│   │   └── permission_service.py # Permission management logic
-│   └── utils/                    # Utility functions
-│       └── db_init.py            # Database initialization
-├── logs/                         # Application logs
-├── tests/                        # Test files
-├── main.py                       # Application entry point
-├── requirements.txt              # Python dependencies
-├── .env                          # Environment variables
-└── README.md                     # This file
+# Run the application
+python main.py
 ```
 
-## 🛠️ Setup Instructions
+The server will start at **http://localhost:4256**
 
-### Prerequisites
+**Default Admin Credentials:**
+- Username: `raghav`
+- Password: `raghav123`
 
-- Python 3.12
-- Conda (recommended for environment management)
+⚠️ **Change these immediately in production!**
 
-### 1. Activate Conda Environment
+## 📁 Project Structure
 
-```powershell
+```
+backend/
+├── src/
+│   ├── api/v1/              # API endpoints
+│   │   ├── dependencies/    # Auth & dependencies
+│   │   └── endpoints/       # Route handlers
+│   ├── core/                # Configuration & security
+│   ├── db/
+│   │   ├── models/          # SQLAlchemy models
+│   │   ├── repositories/    # Data access layer
+│   │   └── database.py      # DB connection
+│   ├── schemas/             # Pydantic schemas
+│   ├── services/            # Business logic
+│   └── utils/               # Utilities & DB init
+├── docs/                    # Documentation
+├── logs/                    # Application logs
+├── tests/                   # Unit & integration tests
+├── scripts/                 # Deployment scripts
+├── main.py                  # Application entry
+├── requirements.txt         # Dependencies
+└── environment.yml          # Conda environment
+```
+
+## 🛠️ Setup & Configuration
+
+### Environment Setup
+
+See **[docs/CONDA_SETUP.md](docs/CONDA_SETUP.md)** for detailed environment setup instructions.
+
+```bash
+# Quick setup
+conda env create -f environment.yml
 conda activate bafl-backend
 ```
 
-### 2. Install Dependencies
+### Database Configuration
 
-```powershell
-pip install -r requirements.txt
-```
-
-### 3. Configure Environment
-
-The `.env` file is already created. Update if needed:
+Update `.env` with your Supabase connection:
 
 ```env
-# Application
-APP_NAME="BAFL Backend API"
-DEBUG=True
-ENVIRONMENT=development
-
-# Security (CHANGE IN PRODUCTION!)
-SECRET_KEY=your-secret-key-change-this-in-production-minimum-32-characters-long
-
-# Database
-DATABASE_URL=sqlite:///./bafl_database.db
-
-# Tokens
+DATABASE_URL=postgresql://postgres.[project]:[password]@[host].pooler.supabase.com:5432/postgres
+SECRET_KEY=your-secret-key-minimum-32-characters
 ACCESS_TOKEN_EXPIRE_DAYS=7
 REFRESH_TOKEN_EXPIRE_DAYS=7
 ```
 
-### 4. Run the Application
+### Running the Application
 
-```powershell
+```bash
+cd backend
 conda activate bafl-backend
 python main.py
 ```
 
-The application will automatically:
-- Create database tables
-- Initialize all permissions
-- Create the initial admin user
-- Start the server at http://localhost:4256
+The application will:
+- ✅ Create database tables
+- ✅ Initialize 77 permissions
+- ✅ Create admin user
+- ✅ Start server at http://localhost:4256
 
 ## 📚 API Documentation
 
 ### Interactive Documentation
 
-Once running, access:
 - **Swagger UI**: http://localhost:4256/docs
 - **ReDoc**: http://localhost:4256/redoc
 - **Health Check**: http://localhost:4256/health
 
 ### Complete API Reference
 
-For a comprehensive list of all API endpoints with detailed documentation, see [API_ENDPOINTS.md](API_ENDPOINTS.md).
+**[docs/API_ENDPOINTS.md](docs/API_ENDPOINTS.md)** - Comprehensive API documentation including:
+- All endpoints with request/response examples
+- Authentication & authorization details
+- Error codes and handling
+- Rate limiting and best practices
 
-This includes:
-- Authentication endpoints
-- User and permission management
-- Coach, student, school, and batch management
-- Physical assessment endpoints
-- Archery practice and tournament endpoints
-- Request/response examples
-- Error codes and authentication details
+## � Roles & Permissions
 
-## 👥 Roles & Permissions
+### Overview
 
-### User Roles
+- **77 Granular Permissions** across 10 categories
+- **3 User Roles**: Admin (77 permissions), Coach (28 permissions), User (16 permissions)
+- **Custom Permission Assignment**: Fine-grained access control
 
-| Role | Description | Can Create |
-|------|-------------|------------|
-| **Admin** | Full system access (only one) | Users, Coaches, Admins |
-| **User** | Regular user access | None |
-| **Coach** | Coaching staff access | None |
+See **[docs/PERMISSIONS_SETUP.md](docs/PERMISSIONS_SETUP.md)** for complete permission details.
 
-### Default Permissions by Role
+### Quick Reference
 
-**Admin:**
-- `create_user` - Create regular users
-- `create_coach` - Create coach users
-- `create_admin` - Create admin users
-- `delete_user` - Delete any user
-- `delete_coach` - Delete coach users
-- `delete_admin` - Delete admin users
-- `view_all_users` - View all users
-- `edit_all_users` - Edit any user information
-- `assign_permissions` - Assign custom permissions
-- `revoke_permissions` - Revoke custom permissions
-- `view_permissions` - View permission details
-- `view_own_profile` - View own profile
-- `edit_own_profile` - Edit own profile
+| Role | Access Level | Key Permissions |
+|------|-------------|-----------------|
+| **Admin** | Full system access | All 77 permissions |
+| **Coach** | Manage batches & assessments | View/create/edit students, batches, assessments |
+| **User** | Limited access | View own profile, edit own info |
 
-**User:**
-- `view_own_profile` - View own profile
-- `edit_own_profile` - Edit own profile
+## 🔌 API Modules
 
-**Coach:**
-- `view_own_profile` - View own profile
-- `edit_own_profile` - Edit own profile
+### Core Services
+- **Authentication** - Login, token refresh, logout
+- **User Management** - CRUD operations with role-based access
+- **Permission Management** - Assign/revoke granular permissions
 
-### Custom Permissions
+### Academic Management  
+- **Schools** - School information and management
+- **Batches** - Class organization and scheduling
+- **Coaches** - Staff management with batch/school assignments
+- **Students** - Student profiles and batch enrollment
 
-The Admin can assign additional permissions to users beyond their role defaults, enabling fine-grained access control.
+### Performance Tracking
+- **Physical Assessments** - Fitness tests and progress tracking
+- **Archery Sessions** - Practice session management and scoring
+- **Archery Tournaments** - Tournament categories and results
 
-## 🔌 API Endpoints Overview
-
-The backend provides RESTful API endpoints organized into the following modules:
-
-### Core Modules
-- **Authentication** (`/api/v1/auth`) - Login, token refresh, logout
-- **User Management** (`/api/v1/users`) - CRUD operations for users
-- **Permission Management** (`/api/v1/permissions`) - Assign/revoke permissions
-
-### Academic Management
-- **Coach Management** (`/api/v1/coaches`) - Manage coaching staff
-- **Student Management** (`/api/v1/students`) - Student records and profiles
-- **School Management** (`/api/v1/schools`) - School information
-- **Batch Management** (`/api/v1/batches`) - Class/batch organization
-
-### Assessment & Training
-- **Physical Assessments** (`/api/v1/physical`) - Physical fitness tracking
-- **Archery Practice** (`/api/v1/archery`) - Practice session management
-- **Archery Tournaments** (`/api/v1/archery/tournaments`) - Tournament records
-
-**📘 For complete endpoint documentation with request/response examples, see [API_ENDPOINTS.md](API_ENDPOINTS.md)**
+**📘 Complete documentation: [docs/API_ENDPOINTS.md](docs/API_ENDPOINTS.md)**
 
 ## 📖 Usage Examples
 
-### 1. Login
+### Authentication
 
 ```bash
-curl -X POST "http://localhost:8000/api/v1/auth/login" \
+# Login
+curl -X POST "http://localhost:4256/api/v1/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{
-    "username": "raghav",
-    "password": "raghav123"
-  }'
+  -d '{"username": "raghav", "password": "raghav123"}'
+
+# Response: {"access_token": "...", "refresh_token": "...", "token_type": "bearer"}
 ```
 
-**Response:**
-```json
-{
-  "access_token": "eyJhbGc...",
-  "refresh_token": "abc123...",
-  "token_type": "bearer"
-}
-```
+### Using Swagger UI (Recommended)
 
-### 2. Create User
+1. Navigate to http://localhost:4256/docs
+2. Click **"Authorize"** button
+3. Enter: `Bearer YOUR_ACCESS_TOKEN`
+4. Test all endpoints interactively
 
-```bash
-curl -X POST "http://localhost:8000/api/v1/users/" \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "John Coach",
-    "username": "john_coach",
-    "password": "secure_password",
-    "role": "coach"
-  }'
-```
+**More examples in [docs/API_ENDPOINTS.md](docs/API_ENDPOINTS.md)**
 
-### 3. Assign Permission
+## ⚡ Performance Optimizations
 
-```bash
-curl -X POST "http://localhost:8000/api/v1/permissions/assign" \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "user_id": 2,
-    "permission": "delete_user"
-  }'
-```
+- **NullPool Configuration**: Eliminates dual pooling with Supabase session pooler
+- **Eager Loading**: `joinedload` and `selectinload` to prevent N+1 queries
+- **Removed Unnecessary Refreshes**: Eliminated 20+ redundant `db.refresh()` calls
+- **Optimized Serialization**: Efficient relationship loading for list endpoints
+
+**Details:** [docs/LATENCY_OPTIMIZATIONS.md](docs/LATENCY_OPTIMIZATIONS.md) | [docs/N+1_QUERY_FIX.md](docs/N+1_QUERY_FIX.md)
 
 ## 📝 Logging
 
-Logs are stored in the `logs/` directory:
-
-- `api.log` - All API requests with timing and user info
-- `auth.log` - Authentication events (login, logout, token operations)
+Logs stored in `logs/` directory:
+- `api.log` - All API requests with timing
+- `auth.log` - Authentication events
 - `database.log` - Database operations
-- `error.log` - Error events with full tracebacks
+- `error.log` - Errors with tracebacks
 
-**Log Format:**
-```
-2025-11-13 10:30:45 - auth - INFO - auth_service:authenticate_user:25 - Login successful for user: raghav
-```
+## 🔒 Security
 
-## 🔒 Security Features
+- ✅ Bcrypt password hashing
+- ✅ JWT access (7 days) and refresh tokens (7 days)
+- ✅ Role-based access control with 77 permissions
+- ✅ SQL injection protection via SQLAlchemy ORM
+- ✅ Comprehensive input validation with Pydantic
 
-1. **Password Hashing**: Bcrypt with automatic salt generation
-2. **JWT Tokens**: 
-   - Access tokens (24 hours default)
-   - Refresh tokens (7 days default)
-   - Stored refresh tokens with revocation support
-3. **Permission Hierarchy**: Prevents privilege escalation
-4. **Input Validation**: Comprehensive Pydantic validation
-5. **SQL Injection Protection**: SQLAlchemy ORM with parameterized queries
+## 🧪 Testing
 
-## 👤 Initial Credentials
+```bash
+# Run all tests
+pytest
 
-**Admin Account:**
-- Username: `raghav`
-- Password: `raghav123`
+# Run with coverage
+pytest --cov=src --cov-report=html
 
-⚠️ **Important**: Change these credentials immediately in production!
-
-## 🚢 Database Migration
-
-Currently using SQLite for development. To migrate to PostgreSQL/Supabase:
-
-1. Update `.env`:
-```env
-DATABASE_URL=postgresql://user:password@host:port/database
+# Run specific test suite
+pytest tests/unit/
+pytest tests/integration/
 ```
 
-2. Install PostgreSQL driver:
-```powershell
-conda activate bafl-backend
-pip install psycopg2-binary
-```
+**Test Results:** [docs/UNIT_TESTS_SUMMARY.md](docs/UNIT_TESTS_SUMMARY.md) | [docs/INTEGRATION_TEST_RESULTS_SUMMARY.md](docs/INTEGRATION_TEST_RESULTS_SUMMARY.md)
 
-3. Restart the application - tables will be created automatically
+## 🚀 Deployment
 
-## 🧪 Development
+See **[docs/CI_CD_SETUP.md](docs/CI_CD_SETUP.md)** for:
+- GitHub Actions CI/CD pipeline
+- Branch protection rules
+- Staging and production deployment
+- Environment configuration
 
-### Running in Debug Mode
+## 📚 Additional Documentation
 
-```powershell
-conda activate bafl-backend
-python main.py
-```
-
-### Using Swagger UI
-
-1. Navigate to http://localhost:8000/docs
-2. Click "Authorize" button
-3. Enter: `Bearer YOUR_ACCESS_TOKEN`
-4. Test endpoints interactively
+| Document | Description |
+|----------|-------------|
+| [API_ENDPOINTS.md](docs/API_ENDPOINTS.md) | Complete API reference with examples |
+| [PERMISSIONS_SETUP.md](docs/PERMISSIONS_SETUP.md) | 77 permissions across 10 categories |
+| [CONDA_SETUP.md](docs/CONDA_SETUP.md) | Environment setup guide |
+| [LATENCY_OPTIMIZATIONS.md](docs/LATENCY_OPTIMIZATIONS.md) | Performance optimization techniques |
+| [N+1_QUERY_FIX.md](docs/N+1_QUERY_FIX.md) | Eager loading implementation |
+| [EXERCISE_LEVELS_README.md](docs/EXERCISE_LEVELS_README.md) | Exercise level mappings |
+| [QUICKSTART.md](docs/QUICKSTART.md) | Quick start guide |
+| [CI_CD_SETUP.md](docs/CI_CD_SETUP.md) | CI/CD pipeline and deployment |
 
 ## 🐛 Troubleshooting
 
-### Database Locked
-If you get "database is locked", ensure no other process is accessing the SQLite file.
+**Token Expired**: Use `/api/v1/auth/refresh` with refresh token
 
-### Token Expired
-Access tokens expire after 24 hours. Use the `/api/v1/auth/refresh` endpoint with your refresh token.
+**Permission Denied**: Check permissions at `GET /api/v1/users/me`
 
-### Permission Denied
-Check your permissions with `GET /api/v1/users/me` to see all assigned permissions.
+**High Latency**: Ensure eager loading is enabled (see [N+1_QUERY_FIX.md](docs/N+1_QUERY_FIX.md))
 
-### Conda Environment Issues
-Make sure to always activate the conda environment before running:
-```powershell
+**Environment Issues**: Always activate conda environment:
+```bash
 conda activate bafl-backend
 ```
 
-## 📊 Code Quality
-
-- **Type Hints**: Full type annotations throughout
-- **Docstrings**: Comprehensive documentation for all functions
-- **Separation of Concerns**: Clean architecture with distinct layers
-- **Error Handling**: Proper exception handling with meaningful messages
-- **Logging**: Comprehensive logging at all levels
-
 ## 🤝 Contributing
 
-When adding new features:
-
 1. Create models in `src/db/models/`
-2. Create repositories in `src/db/repositories/`
-3. Implement business logic in `src/services/`
-4. Define schemas in `src/schemas/`
-5. Create endpoints in `src/api/v1/endpoints/`
-6. Add appropriate logging
+2. Implement repositories in `src/db/repositories/`
+3. Add business logic in `src/services/`
+4. Define Pydantic schemas in `src/schemas/`
+5. Create API endpoints in `src/api/v1/endpoints/`
+6. Add comprehensive logging
+7. Write unit and integration tests
+8. Update documentation
 
 ---
 
-**Built with ❤️ using FastAPI**
+**Built with ❤️ using FastAPI** | **Python 3.12** | **SQLAlchemy 2.0** | **Supabase PostgreSQL**
