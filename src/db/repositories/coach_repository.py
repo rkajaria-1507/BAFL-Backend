@@ -1,5 +1,5 @@
 from typing import Optional, List
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import select
 from src.db.models.coach import Coach
 
@@ -8,7 +8,7 @@ class CoachRepository:
     def create(db: Session, coach: Coach) -> Coach:
         db.add(coach)
         db.commit()
-        db.refresh(coach)
+        # No refresh needed
         return coach
 
     @staticmethod
@@ -21,7 +21,15 @@ class CoachRepository:
     
     @staticmethod
     def get_all(db: Session, skip: int = 0, limit: int = 100) -> List[Coach]:
-        return list(db.scalars(select(Coach).offset(skip).limit(limit)).all())
+        return list(db.scalars(
+            select(Coach)
+            .options(
+                selectinload(Coach.school_assignments),
+                selectinload(Coach.batch_assignments)
+            )
+            .offset(skip)
+            .limit(limit)
+        ).unique().all())
 
     @staticmethod
     def update(db: Session, coach: Coach, update_data: dict) -> Coach:

@@ -41,7 +41,7 @@ class UserRepository:
         user = User(**user_data)
         db.add(user)
         db.commit()
-        db.refresh(user)
+        # No refresh needed - ID is populated after commit, timestamps use Python defaults
         db_logger.info(f"User created: {user.username} (ID: {user.id})")
         return user
     

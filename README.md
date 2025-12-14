@@ -118,7 +118,7 @@ SECRET_KEY=your-secret-key-change-this-in-production-minimum-32-characters-long
 DATABASE_URL=sqlite:///./bafl_database.db
 
 # Tokens
-ACCESS_TOKEN_EXPIRE_MINUTES=1440  # 24 hours
+ACCESS_TOKEN_EXPIRE_DAYS=7
 REFRESH_TOKEN_EXPIRE_DAYS=7
 ```
 

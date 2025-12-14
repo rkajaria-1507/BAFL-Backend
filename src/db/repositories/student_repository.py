@@ -1,5 +1,5 @@
 from typing import Optional, List
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import select
 from src.db.models.student import Student
 
@@ -8,7 +8,7 @@ class StudentRepository:
     def create(db: Session, student: Student) -> Student:
         db.add(student)
         db.commit()
-        db.refresh(student)
+        # No refresh needed - ID populated after commit
         return student
 
     @staticmethod
@@ -17,11 +17,20 @@ class StudentRepository:
 
     @staticmethod
     def get_all(db: Session, skip: int = 0, limit: int = 100) -> List[Student]:
-        return list(db.scalars(select(Student).offset(skip).limit(limit)).all())
+        return list(db.scalars(
+            select(Student)
+            .options(joinedload(Student.batch))
+            .offset(skip)
+            .limit(limit)
+        ).unique().all())
 
     @staticmethod
     def get_by_batch(db: Session, batch_id: int) -> List[Student]:
-        return list(db.scalars(select(Student).where(Student.batch_id == batch_id)).all())
+        return list(db.scalars(
+            select(Student)
+            .options(joinedload(Student.batch))
+            .where(Student.batch_id == batch_id)
+        ).unique().all())
 
     @staticmethod
     def update(db: Session, student: Student, update_data: dict) -> Student:

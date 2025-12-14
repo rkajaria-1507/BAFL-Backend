@@ -95,8 +95,7 @@ class ArcheryService:
         if results_to_create:
             ArcheryResultRepository.create_all(db, results_to_create)
 
-        # Refresh and return
-        db.refresh(session)
+        # Return without refresh - reduces latency by avoiding extra DB round-trip
         return ArcheryService.serialize_session(db, session)
 
     @staticmethod
@@ -279,7 +278,7 @@ class ArcheryService:
                 setattr(session, key, value)
 
             db.commit()
-            db.refresh(session)
+            # Removed refresh - not needed and adds latency
 
         updated_session = session
 

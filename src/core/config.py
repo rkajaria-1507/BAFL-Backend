@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     # Security
     SECRET_KEY: str = Field(...)
     ALGORITHM: str = Field(...)
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(...)
+    ACCESS_TOKEN_EXPIRE_DAYS: int = Field(...)
     REFRESH_TOKEN_EXPIRE_DAYS: int = Field(...)
 
     # Database

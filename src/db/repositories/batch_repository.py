@@ -1,5 +1,5 @@
 from typing import Optional, List
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import select
 from src.db.models.batch import Batch
 from src.db.models.coach_batch import CoachBatch
@@ -18,20 +18,30 @@ class BatchRepository:
 
     @staticmethod
     def get_all(db: Session, skip: int = 0, limit: int = 100) -> List[Batch]:
-        return list(db.scalars(select(Batch).offset(skip).limit(limit)).all())
+        return list(db.scalars(
+            select(Batch)
+            .options(selectinload(Batch.coach_assignments))
+            .offset(skip)
+            .limit(limit)
+        ).unique().all())
 
     @staticmethod
     def get_by_school(db: Session, school_id: int) -> List[Batch]:
-        return list(db.scalars(select(Batch).where(Batch.school_id == school_id)).all())
+        return list(db.scalars(
+            select(Batch)
+            .options(selectinload(Batch.coach_assignments))
+            .where(Batch.school_id == school_id)
+        ).unique().all())
 
     @staticmethod
     def get_by_coach(db: Session, coach_id: int) -> List[Batch]:
         stmt = (
             select(Batch)
+            .options(selectinload(Batch.coach_assignments))
             .join(CoachBatch, CoachBatch.batch_id == Batch.id)
             .where(CoachBatch.coach_id == coach_id)
         )
-        return list(db.scalars(stmt).all())
+        return list(db.scalars(stmt).unique().all())
 
     @staticmethod
     def update(db: Session, batch: Batch, update_data: dict) -> Batch:

@@ -8,7 +8,7 @@ class SchoolRepository:
     def create(db: Session, school: School) -> School:
         db.add(school)
         db.commit()
-        db.refresh(school)
+        # No refresh needed
         return school
 
     @staticmethod

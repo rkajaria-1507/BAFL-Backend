@@ -4,21 +4,19 @@ Database connection and session management.
 from typing import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session, declarative_base
-
+from sqlalchemy.pool import NullPool
 from src.core.config import settings
 from src.core.logging import db_logger
 
 
 # Create SQLAlchemy engine
-# Using Supabase session pooler - disable client-side pooling since pooling is handled by Supabase
+# Using Supabase session pooler with NullPool (pgBouncer already handles pooling)
+# Double pooling causes connection churn and latency - this is the #1 optimization
 engine = create_engine(
     settings.DATABASE_URL,
-    echo=False,
-    pool_pre_ping=True,
-    pool_size=5,  # Small pool size since pooling is handled by Supabase
-    max_overflow=10,  # Allow some overflow connections
-    pool_recycle=300,  # Recycle connections every 5 minutes
-    pool_timeout=30  # Connection timeout in seconds
+    poolclass=NullPool,
+    future=True,
+    echo=False
 )
 
 # Create session factory

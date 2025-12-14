@@ -8,7 +8,7 @@ class PhysicalResultsRepository:
     def create(db: Session, result: PhysicalAssessmentDetail) -> PhysicalAssessmentDetail:
         db.add(result)
         db.commit()
-        db.refresh(result)
+        # No refresh needed
         return result
 
     @staticmethod

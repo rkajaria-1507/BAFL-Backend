@@ -164,7 +164,7 @@ class RefreshTokenRepository:
         )
         db.add(refresh_token)
         db.commit()
-        db.refresh(refresh_token)
+        # No refresh needed
         return refresh_token
     
     @staticmethod
