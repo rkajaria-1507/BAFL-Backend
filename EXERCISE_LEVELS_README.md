@@ -32,7 +32,7 @@ Stores the criteria for determining fitness levels for each exercise.
 - `walk_600m` (minutes) - Lower is better
 - `dash_50m` (seconds) - Lower is better
 - `bow_hold` (seconds) - Higher is better
-- `plank` (seconds) - Higher is better
+- `plank` (minutes) - Higher is better
 
 ### 2. `student_exercise_averages`
 Stores the calculated average and current level for each student-batch-exercise combination.
@@ -70,66 +70,66 @@ Stores the calculated average and current level for each student-batch-exercise 
 
 #### Curl Up (count)
 - L1: 0-14
-- L2: 15
-- L3: 16-20
-- L4: 21
-- L5: 22-23
-- L6: 24
-- L7: 25+
+- L2: 14-15
+- L3: 15-20
+- L4: 20-21
+- L5: 21-23
+- L6: 23-24
+- L7: 24+
 
 #### Push Up (count)
 - L1: 0-7
-- L2: 8
-- L3: 8
-- L4: 9
-- L5: 10
+- L2: 7-8
+- L3: 8-9
+- L4: 9-10
+- L5: 10-11
 - L6: 11-12
-- L7: 13+
+- L7: 12+
 
 #### Sit and Reach (cm)
 - L1: 0-15.8
-- L2: 15.81-19.7
-- L3: 19.71-23.1
-- L4: 23.11-24.9
-- L5: 24.91-27.1
-- L6: 27.11-32.5
-- L7: 32.51+
+- L2: 15.8-19.7
+- L3: 19.7-23.1
+- L4: 23.1-24.9
+- L5: 24.9-27.1
+- L6: 27.1-32.5
+- L7: 32.5+
 
 #### 600m Walk (minutes) - Lower is better
 - L1: 3.24+
-- L2: 3.14-3.23
-- L3: 3.07-3.13
-- L4: 3.04-3.06
-- L5: 3.01-3.03
-- L6: 3.00
+- L2: 3.14-3.24
+- L3: 3.07-3.14
+- L4: 3.04-3.07
+- L5: 3.01-3.04
+- L6: 3.00-3.01
 - L7: <3.00
 
 #### 50m Dash (seconds) - Lower is better
 - L1: 9.5+
-- L2: 9.0-9.49
-- L3: 8.6-8.99
-- L4: 8.4-8.59
-- L5: 8.2-8.39
-- L6: 8.0-8.19
-- L7: <8.00
+- L2: 9.0-9.5
+- L3: 8.6-9.0
+- L4: 8.4-8.6
+- L5: 8.2-8.4
+- L6: 8.0-8.2
+- L7: <8.0
 
 #### Bow Hold (seconds)
 - L1: 0-40
-- L2: 41-50
-- L3: 51-60
-- L4: 61-70
-- L5: 71-80
-- L6: 81-90
-- L7: 91+
+- L2: 40-50
+- L3: 50-60
+- L4: 60-70
+- L5: 70-80
+- L6: 80-90
+- L7: 90+
 
-#### Plank (seconds)
-- L1: 0-40
-- L2: 41-80
-- L3: 81-120
-- L4: 121-160
-- L5: 161-200
-- L6: 201-240
-- L7: 241+
+#### Plank (minutes)
+- L1: 0-0.67 (0-40 sec)
+- L2: 0.67-1.33 (41-80 sec)
+- L3: 1.33-2.0 (81-120 sec)
+- L4: 2.0-2.67 (121-160 sec)
+- L5: 2.67-3.33 (161-200 sec)
+- L6: 3.33-4.0 (201-240 sec)
+- L7: 4.0+ (241+ sec)
 
 ## Setup Instructions
 

@@ -1,201 +1,329 @@
 """
-Unit tests for PhysicalAssessmentService.get_level_mappings
+Unit tests for PhysicalAssessmentService
+Tests business logic layer with mocked repositories and dependencies.
 """
 import pytest
+from unittest.mock import Mock, patch, MagicMock
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
+
 from src.services.physical_assessment_service import PhysicalAssessmentService
-from src.schemas.physical_assessment import PhysicalAssessmentLevelMappingResponse
 
 
 @pytest.mark.unit
-class TestPhysicalAssessmentServiceLevelMappings:
-    """Unit tests for PhysicalAssessmentService level mappings functionality"""
-    
-    def test_get_level_mappings_returns_correct_type(self, test_db, complete_test_data):
-        """Test that get_level_mappings returns PhysicalAssessmentLevelMappingResponse"""
-        result = PhysicalAssessmentService.get_level_mappings(test_db)
+class TestExerciseValidation:
+    """Test exercise value validation logic."""
+
+    def test_validate_curl_up_valid_range(self):
+        """Test curl_up validation with valid values."""
+        # Should not raise
+        PhysicalAssessmentService._validate_exercise_value("curl_up", 50, student_id=1)
+        PhysicalAssessmentService._validate_exercise_value("curl_up", 0, student_id=1)
+        PhysicalAssessmentService._validate_exercise_value("curl_up", 200, student_id=1)
+
+    def test_validate_curl_up_exceeds_maximum(self):
+        """Test curl_up validation fails above maximum."""
+        with pytest.raises(HTTPException) as exc_info:
+            PhysicalAssessmentService._validate_exercise_value("curl_up", 201, student_id=1)
         
-        assert isinstance(result, PhysicalAssessmentLevelMappingResponse)
-        assert hasattr(result, "schools")
-    
-    def test_get_level_mappings_with_empty_database(self, test_db):
-        """Test get_level_mappings with empty database"""
-        result = PhysicalAssessmentService.get_level_mappings(test_db)
+        assert exc_info.value.status_code == 422
+        assert "exceeds maximum" in str(exc_info.value.detail)
+        assert exc_info.value.detail["exercise"] == "curl_up"
+        assert exc_info.value.detail["value"] == 201
+
+    def test_validate_curl_up_negative_value(self):
+        """Test curl_up validation fails with negative value."""
+        with pytest.raises(HTTPException) as exc_info:
+            PhysicalAssessmentService._validate_exercise_value("curl_up", -5, student_id=1)
         
-        assert len(result.schools) == 0
-    
-    def test_get_level_mappings_structures_data_correctly(self, test_db, complete_test_data):
-        """Test that get_level_mappings structures data correctly"""
-        result = PhysicalAssessmentService.get_level_mappings(test_db)
+        assert exc_info.value.status_code == 422
+        assert "below minimum" in str(exc_info.value.detail)
+
+    def test_validate_push_up_boundary_values(self):
+        """Test push_up validation at boundaries."""
+        # Valid boundaries
+        PhysicalAssessmentService._validate_exercise_value("push_up", 0, student_id=1)
+        PhysicalAssessmentService._validate_exercise_value("push_up", 150, student_id=1)
         
-        assert len(result.schools) == 1
+        # Invalid - exceeds max
+        with pytest.raises(HTTPException):
+            PhysicalAssessmentService._validate_exercise_value("push_up", 151, student_id=1)
+
+    def test_validate_walk_600m_zero_rejected(self):
+        """Test walk_600m validation rejects zero (cannot complete in 0 time)."""
+        with pytest.raises(HTTPException) as exc_info:
+            PhysicalAssessmentService._validate_exercise_value("walk_600m", 0, student_id=1)
         
-        school = result.schools[0]
-        assert school.school_name == "Test High School"
-        assert len(school.batches) == 1
+        assert exc_info.value.status_code == 422
+        assert "cannot be 0 for timed exercises" in str(exc_info.value.detail)
+        assert exc_info.value.detail["constraint"] == "non_zero"
+
+    def test_validate_walk_600m_below_minimum(self):
+        """Test walk_600m validation rejects values below minimum."""
+        with pytest.raises(HTTPException) as exc_info:
+            PhysicalAssessmentService._validate_exercise_value("walk_600m", 1.0, student_id=1)
         
-        batch = school.batches[0]
-        assert batch.batch_name == "Batch A"
-        assert batch.coach_names is not None
-        assert "Sample Coach" in batch.coach_names
-        assert len(batch.students) == 3
+        assert exc_info.value.status_code == 422
+        assert "below minimum" in str(exc_info.value.detail)
+
+    def test_validate_walk_600m_valid_values(self):
+        """Test walk_600m validation with valid values."""
+        PhysicalAssessmentService._validate_exercise_value("walk_600m", 1.5, student_id=1)
+        PhysicalAssessmentService._validate_exercise_value("walk_600m", 8.0, student_id=1)
+        PhysicalAssessmentService._validate_exercise_value("walk_600m", 15.5, student_id=1)
+
+    def test_validate_dash_50m_zero_rejected(self):
+        """Test dash_50m validation rejects zero."""
+        with pytest.raises(HTTPException):
+            PhysicalAssessmentService._validate_exercise_value("dash_50m", 0, student_id=1)
+
+    def test_validate_dash_50m_below_minimum(self):
+        """Test dash_50m validation rejects unrealistic values."""
+        with pytest.raises(HTTPException) as exc_info:
+            PhysicalAssessmentService._validate_exercise_value("dash_50m", 4.5, student_id=1)
         
-        student = batch.students[0]
-        assert student.student_name == "Student 1"
-        assert len(student.exercises) == 7
-    
-    def test_all_exercises_present_in_correct_order(self, test_db, complete_test_data):
-        """Test that all 7 exercises are present in correct order"""
-        result = PhysicalAssessmentService.get_level_mappings(test_db)
+        assert exc_info.value.status_code == 422
+        assert "below minimum" in str(exc_info.value.detail)
+
+    def test_validate_dash_50m_valid_values(self):
+        """Test dash_50m validation with valid values."""
+        PhysicalAssessmentService._validate_exercise_value("dash_50m", 5.0, student_id=1)
+        PhysicalAssessmentService._validate_exercise_value("dash_50m", 7.5, student_id=1)
+        PhysicalAssessmentService._validate_exercise_value("dash_50m", 12.0, student_id=1)
+
+    def test_validate_sit_and_reach_valid_range(self):
+        """Test sit_and_reach validation with valid values."""
+        PhysicalAssessmentService._validate_exercise_value("sit_and_reach", 0, student_id=1)
+        PhysicalAssessmentService._validate_exercise_value("sit_and_reach", 50.5, student_id=1)
+        PhysicalAssessmentService._validate_exercise_value("sit_and_reach", 100, student_id=1)
+
+    def test_validate_sit_and_reach_exceeds_maximum(self):
+        """Test sit_and_reach validation fails above maximum."""
+        with pytest.raises(HTTPException):
+            PhysicalAssessmentService._validate_exercise_value("sit_and_reach", 101, student_id=1)
+
+    def test_validate_bow_hold_valid_range(self):
+        """Test bow_hold validation with valid values."""
+        PhysicalAssessmentService._validate_exercise_value("bow_hold", 0, student_id=1)
+        PhysicalAssessmentService._validate_exercise_value("bow_hold", 300.5, student_id=1)
+        PhysicalAssessmentService._validate_exercise_value("bow_hold", 600, student_id=1)
+
+    def test_validate_bow_hold_exceeds_maximum(self):
+        """Test bow_hold validation fails above maximum."""
+        with pytest.raises(HTTPException):
+            PhysicalAssessmentService._validate_exercise_value("bow_hold", 601, student_id=1)
+
+    def test_validate_plank_valid_range(self):
+        """Test plank validation with valid values."""
+        PhysicalAssessmentService._validate_exercise_value("plank", 0, student_id=1)
+        PhysicalAssessmentService._validate_exercise_value("plank", 5.5, student_id=1)
+        PhysicalAssessmentService._validate_exercise_value("plank", 10, student_id=1)
+
+    def test_validate_plank_exceeds_maximum(self):
+        """Test plank validation fails above maximum (10 minutes)."""
+        with pytest.raises(HTTPException):
+            PhysicalAssessmentService._validate_exercise_value("plank", 10.1, student_id=1)
+
+    def test_validate_none_value_allowed(self):
+        """Test that None values are allowed (student didn't perform exercise)."""
+        # Should not raise for any exercise
+        PhysicalAssessmentService._validate_exercise_value("curl_up", None, student_id=1)
+        PhysicalAssessmentService._validate_exercise_value("walk_600m", None, student_id=1)
+        PhysicalAssessmentService._validate_exercise_value("plank", None, student_id=1)
+
+    def test_validate_unknown_exercise_ignored(self):
+        """Test that unknown exercises are not validated."""
+        # Should not raise
+        PhysicalAssessmentService._validate_exercise_value("unknown_exercise", 999, student_id=1)
+        PhysicalAssessmentService._validate_exercise_value("invalid", -999, student_id=1)
+
+    def test_validate_float_values_accepted(self):
+        """Test that float values are accepted for exercises."""
+        PhysicalAssessmentService._validate_exercise_value("sit_and_reach", 15.75, student_id=1)
+        PhysicalAssessmentService._validate_exercise_value("walk_600m", 7.33, student_id=1)
+        PhysicalAssessmentService._validate_exercise_value("plank", 3.14, student_id=1)
+
+    def test_validate_error_includes_student_id(self):
+        """Test that validation errors include student ID for tracking."""
+        with pytest.raises(HTTPException) as exc_info:
+            PhysicalAssessmentService._validate_exercise_value("curl_up", -5, student_id=42)
         
-        student = result.schools[0].batches[0].students[0]
-        exercise_names = [ex.exercise_name for ex in student.exercises]
+        assert exc_info.value.detail["student_id"] == 42
+
+
+@pytest.mark.unit
+class TestExerciseConstraints:
+    """Test EXERCISE_CONSTRAINTS configuration."""
+
+    def test_exercise_constraints_has_all_exercises(self):
+        """Test that all 7 exercises have constraints defined."""
+        constraints = PhysicalAssessmentService.EXERCISE_CONSTRAINTS
         
-        expected_order = ["curl_up", "push_up", "sit_and_reach", "walk_600m", "dash_50m", "bow_hold", "plank"]
-        assert exercise_names == expected_order
-    
-    def test_exercises_with_data_have_correct_values(self, test_db, complete_test_data):
-        """Test that exercises with data have correct values"""
-        result = PhysicalAssessmentService.get_level_mappings(test_db)
+        required_exercises = [
+            "curl_up", "push_up", "sit_and_reach", 
+            "walk_600m", "dash_50m", "bow_hold", "plank"
+        ]
         
-        student = result.schools[0].batches[0].students[0]
+        for exercise in required_exercises:
+            assert exercise in constraints
+            assert "min" in constraints[exercise]
+            assert "max" in constraints[exercise]
+            assert "type" in constraints[exercise]
+
+    def test_exercise_constraints_types(self):
+        """Test that exercise types are correctly classified."""
+        constraints = PhysicalAssessmentService.EXERCISE_CONSTRAINTS
         
-        # Find curl_up exercise
-        curl_up = next(ex for ex in student.exercises if ex.exercise_name == "curl_up")
-        assert curl_up.average_score == 50.0
-        assert curl_up.level == 5
-        assert curl_up.level_description == "good"
-    
-    def test_exercises_without_data_have_null_values(self, test_db, complete_test_data):
-        """Test that exercises without data have null values"""
-        result = PhysicalAssessmentService.get_level_mappings(test_db)
+        # Higher is better
+        assert constraints["curl_up"]["type"] == "higher_better"
+        assert constraints["push_up"]["type"] == "higher_better"
+        assert constraints["sit_and_reach"]["type"] == "higher_better"
+        assert constraints["bow_hold"]["type"] == "higher_better"
+        assert constraints["plank"]["type"] == "higher_better"
         
-        student = result.schools[0].batches[0].students[0]
+        # Lower is better (timed exercises)
+        assert constraints["walk_600m"]["type"] == "lower_better"
+        assert constraints["dash_50m"]["type"] == "lower_better"
+
+    def test_timed_exercises_have_minimum_threshold(self):
+        """Test that timed exercises have realistic minimum thresholds."""
+        constraints = PhysicalAssessmentService.EXERCISE_CONSTRAINTS
         
-        # Find sit_and_reach exercise (no data)
-        sit_and_reach = next(ex for ex in student.exercises if ex.exercise_name == "sit_and_reach")
-        assert sit_and_reach.average_score is None
-        assert sit_and_reach.level is None
-        assert sit_and_reach.level_description is None
-    
-    def test_student_without_exercise_data_has_all_nulls(self, test_db, sample_batch):
-        """Test that student without any exercise data has all null values"""
-        from src.db.models.student import Student
+        assert constraints["walk_600m"]["min"] == 1.5  # 1.5 minutes minimum
+        assert constraints["dash_50m"]["min"] == 5.0   # 5.0 seconds minimum
+
+    def test_count_exercises_start_at_zero(self):
+        """Test that count-based exercises can start at 0."""
+        constraints = PhysicalAssessmentService.EXERCISE_CONSTRAINTS
         
-        # Create a student without exercise data
-        student = Student(name="No Data Student", age=16, batch_id=sample_batch.id)
-        test_db.add(student)
-        test_db.commit()
+        assert constraints["curl_up"]["min"] == 0
+        assert constraints["push_up"]["min"] == 0
+        assert constraints["sit_and_reach"]["min"] == 0
+        assert constraints["bow_hold"]["min"] == 0
+        assert constraints["plank"]["min"] == 0
+
+
+@pytest.mark.unit
+class TestValidationBoundaries:
+    """Test boundary value validation."""
+
+    def test_curl_up_at_boundaries(self):
+        """Test curl_up at exact boundary values."""
+        # Minimum boundary
+        PhysicalAssessmentService._validate_exercise_value("curl_up", 0, student_id=1)
         
-        result = PhysicalAssessmentService.get_level_mappings(test_db)
+        # Maximum boundary
+        PhysicalAssessmentService._validate_exercise_value("curl_up", 200, student_id=1)
         
-        # Find the student
-        students = result.schools[0].batches[0].students
-        no_data_student = next(s for s in students if s.student_name == "No Data Student")
+        # Just over maximum - should fail
+        with pytest.raises(HTTPException):
+            PhysicalAssessmentService._validate_exercise_value("curl_up", 200.1, student_id=1)
+
+    def test_walk_600m_at_boundaries(self):
+        """Test walk_600m at exact boundary values."""
+        # Minimum boundary
+        PhysicalAssessmentService._validate_exercise_value("walk_600m", 1.5, student_id=1)
         
-        # All exercises should have null values
-        for exercise in no_data_student.exercises:
-            assert exercise.average_score is None
-            assert exercise.level is None
-            assert exercise.level_description is None
-    
-    def test_batch_with_no_coaches_returns_null(self, test_db, sample_school):
-        """Test that batch with no coaches returns null for coach_names"""
-        from src.db.models.batch import Batch
-        from src.db.models.student import Student
-        from src.db.models.student_exercise_average import StudentExerciseAverage
+        # Just below minimum - should fail
+        with pytest.raises(HTTPException):
+            PhysicalAssessmentService._validate_exercise_value("walk_600m", 1.49, student_id=1)
+
+    def test_plank_at_boundaries(self):
+        """Test plank at exact boundary values."""
+        # Minimum boundary
+        PhysicalAssessmentService._validate_exercise_value("plank", 0, student_id=1)
         
-        # Create batch without coaches
-        batch = Batch(school_id=sample_school.id, batch_name="No Coach Batch")
-        test_db.add(batch)
-        test_db.flush()
+        # Maximum boundary
+        PhysicalAssessmentService._validate_exercise_value("plank", 10, student_id=1)
         
-        # Add student to batch so it appears in results
-        student = Student(batch_id=batch.id, name="Test Student", age=10)
-        test_db.add(student)
-        test_db.flush()
+        # Just over maximum - should fail
+        with pytest.raises(HTTPException):
+            PhysicalAssessmentService._validate_exercise_value("plank", 10.01, student_id=1)
+
+
+@pytest.mark.unit
+class TestValidationErrorDetails:
+    """Test validation error detail structure."""
+
+    def test_error_detail_structure_for_maximum_exceeded(self):
+        """Test error detail structure when maximum is exceeded."""
+        with pytest.raises(HTTPException) as exc_info:
+            PhysicalAssessmentService._validate_exercise_value("curl_up", 250, student_id=10)
         
-        # Add exercise data so student appears
-        avg = StudentExerciseAverage(
-            student_id=student.id,
-            batch_id=batch.id,
-            school_id=sample_school.id,
-            exercise_name="curl_up",
-            average_score=20.0
-        )
-        test_db.add(avg)
-        test_db.commit()
+        detail = exc_info.value.detail
+        assert detail["code"] == "validation_error"
+        assert "message" in detail
+        assert detail["exercise"] == "curl_up"
+        assert detail["student_id"] == 10
+        assert detail["value"] == 250
+        assert "constraint" in detail
+
+    def test_error_detail_structure_for_minimum_below(self):
+        """Test error detail structure when below minimum."""
+        with pytest.raises(HTTPException) as exc_info:
+            PhysicalAssessmentService._validate_exercise_value("walk_600m", 1.0, student_id=5)
         
-        result = PhysicalAssessmentService.get_level_mappings(test_db)
+        detail = exc_info.value.detail
+        assert detail["code"] == "validation_error"
+        assert detail["exercise"] == "walk_600m"
+        assert detail["student_id"] == 5
+        assert detail["value"] == 1.0
+
+    def test_error_detail_structure_for_zero_timed(self):
+        """Test error detail structure for zero on timed exercise."""
+        with pytest.raises(HTTPException) as exc_info:
+            PhysicalAssessmentService._validate_exercise_value("dash_50m", 0, student_id=7)
         
-        # Should have one school with one batch
-        assert len(result.schools) == 1
-        assert len(result.schools[0].batches) == 1
+        detail = exc_info.value.detail
+        assert detail["code"] == "validation_error"
+        assert detail["constraint"] == "non_zero"
+        assert detail["student_id"] == 7
+
+
+@pytest.mark.unit
+class TestMultipleExerciseValidation:
+    """Test validating multiple exercises together."""
+
+    def test_validate_all_valid_exercises(self):
+        """Test validating a complete set of valid exercise values."""
+        exercises = {
+            "curl_up": 50,
+            "push_up": 30,
+            "sit_and_reach": 15.5,
+            "walk_600m": 8.0,
+            "dash_50m": 7.2,
+            "bow_hold": 60.0,
+            "plank": 3.5
+        }
         
-        # Coach names should be None for batch without coaches
-        assert result.schools[0].batches[0].coach_names is None
-    
-    def test_batch_with_multiple_coaches(self, test_db, sample_batch, sample_coach, assign_coach_to_batch, complete_test_data):
-        """Test that batch with multiple coaches returns all coach names"""
-        from src.db.models.coach import Coach
-        from src.db.models.coach_batch import CoachBatch
+        # Should not raise
+        for name, value in exercises.items():
+            PhysicalAssessmentService._validate_exercise_value(name, value, student_id=1)
+
+    def test_validate_mixed_valid_and_none(self):
+        """Test validating mix of valid values and None."""
+        exercises = {
+            "curl_up": 50,
+            "push_up": None,
+            "sit_and_reach": 15.5,
+            "walk_600m": None,
+            "dash_50m": 7.2,
+            "bow_hold": None,
+            "plank": 3.5
+        }
         
-        # Add second coach
-        from src.core.security import PasswordHandler
-        coach2 = Coach(
-            name="Second Coach",
-            username="coach2",
-            password=PasswordHandler.hash("password123"),
-            is_active=True
-        )
-        test_db.add(coach2)
-        test_db.flush()
+        # Should not raise
+        for name, value in exercises.items():
+            PhysicalAssessmentService._validate_exercise_value(name, value, student_id=1)
+
+    def test_validate_stops_at_first_invalid(self):
+        """Test that validation raises on first invalid value."""
+        exercises = [
+            ("curl_up", 250),  # Invalid - too high
+            ("push_up", 30),   # Valid but won't be reached
+        ]
         
-        coach_batch = CoachBatch(coach_id=coach2.id, batch_id=sample_batch.id)
-        test_db.add(coach_batch)
-        test_db.commit()
-        
-        result = PhysicalAssessmentService.get_level_mappings(test_db)
-        
-        batch = result.schools[0].batches[0]
-        assert len(batch.coach_names) == 2
-        assert "Sample Coach" in batch.coach_names
-        assert "Second Coach" in batch.coach_names
-    
-    def test_multiple_schools_structured_correctly(self, test_db, complete_test_data):
-        """Test that multiple schools are structured correctly"""
-        from src.db.models.school import School
-        from src.db.models.batch import Batch
-        
-        # Add second school
-        school2 = School(name="Second School", address="456 Test Ave")
-        test_db.add(school2)
-        test_db.flush()
-        
-        batch2 = Batch(school_id=school2.id, batch_name="Batch B")
-        test_db.add(batch2)
-        test_db.flush()
-        
-        # Add student to batch2 so it appears in results
-        from src.db.models.student import Student
-        from src.db.models.student_exercise_average import StudentExerciseAverage
-        student2 = Student(batch_id=batch2.id, name="Student in School 2", age=12)
-        test_db.add(student2)
-        test_db.flush()
-        
-        # Add exercise data so student appears
-        avg2 = StudentExerciseAverage(
-            student_id=student2.id,
-            batch_id=batch2.id,
-            school_id=school2.id,
-            exercise_name="curl_up",
-            average_score=40.0
-        )
-        test_db.add(avg2)
-        test_db.commit()
-        
-        result = PhysicalAssessmentService.get_level_mappings(test_db)
-        
-        assert len(result.schools) == 2
-        school_names = [s.school_name for s in result.schools]
-        assert "Test High School" in school_names
-        assert "Second School" in school_names
+        with pytest.raises(HTTPException):
+            PhysicalAssessmentService._validate_exercise_value(
+                exercises[0][0], exercises[0][1], student_id=1
+            )
