@@ -20,6 +20,7 @@ class Student(Base):
         "ArcheryTournamentResult",
         back_populates="student",
     )
+    attendances = relationship("StudentAttendance", back_populates="student", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<Student(id={self.id}, name='{self.name}')>"

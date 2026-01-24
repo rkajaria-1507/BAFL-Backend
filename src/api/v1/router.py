@@ -7,6 +7,7 @@ from src.api.v1.endpoints import (
 	archery,
 	archery_tournaments,
 	assessments,
+	attendance,
 	auth,
 	batches,
 	coaches,
@@ -31,3 +32,4 @@ api_v1_router.include_router(batches.router)
 api_v1_router.include_router(assessments.router)
 api_v1_router.include_router(archery.router)
 api_v1_router.include_router(archery_tournaments.router)
+api_v1_router.include_router(attendance.router)

@@ -20,6 +20,7 @@ This document provides a comprehensive list of all API endpoints available in th
 - [Physical Assessments](#physical-assessments)
 - [Archery Practice](#archery-practice)
 - [Archery Tournaments](#archery-tournaments)
+- [Attendance](#attendance)
 
 ---
 
@@ -31,9 +32,9 @@ This document provides a comprehensive list of all API endpoints available in th
 **Response**:
 ```json
 {
-  "message": "Welcome to BAFL Backend API",
-  "version": "1.0.0",
-  "environment": "development",
+  "message": "Welcome to <APP_NAME>",
+  "version": "<APP_VERSION>",
+  "environment": "<development|staging|production>",
   "docs": "/docs",
   "health": "/health"
 }
@@ -46,9 +47,9 @@ This document provides a comprehensive list of all API endpoints available in th
 ```json
 {
   "status": "healthy",
-  "app_name": "BAFL Backend API",
-  "version": "1.0.0",
-  "environment": "development"
+  "app_name": "<APP_NAME>",
+  "version": "<APP_VERSION>",
+  "environment": "<development|staging|production>"
 }
 ```
 
@@ -61,7 +62,7 @@ Base path: `/api/v1/auth`
 ### POST `/api/v1/auth/login`
 **Description**: Login and get access & refresh tokens  
 **Authentication**: Not required  
-**Content-Type**: `application/json` or `application/x-www-form-urlencoded`  
+**Content-Type**: `application/json`, `application/x-www-form-urlencoded`, or `multipart/form-data`  
 **Request Body**:
 ```json
 {
@@ -69,16 +70,35 @@ Base path: `/api/v1/auth`
   "password": "string"
 }
 ```
-**Response**:
+**Response** (discriminated by `user_type`):
+
+User response:
 ```json
 {
+  "user_type": "user",
   "access_token": "string",
   "refresh_token": "string",
+  "token_type": "bearer",
   "user": {
     "user_id": 1,
     "name": "string",
     "username": "string",
     "role": "admin|user|coach"
+  }
+}
+```
+
+Coach response:
+```json
+{
+  "user_type": "coach",
+  "access_token": "string",
+  "refresh_token": "string",
+  "token_type": "bearer",
+  "coach": {
+    "coach_id": 1,
+    "name": "string",
+    "username": "string"
   }
 }
 ```
@@ -114,7 +134,8 @@ Base path: `/api/v1/auth`
 ```json
 {
   "message": "Successfully logged out",
-  "success": true
+  "success": true,
+  "data": null
 }
 ```
 
@@ -276,10 +297,15 @@ Base path: `/api/v1/permissions`
   "assigned_by": 1
 }
 ```
-**Response**: `200 OK`
+Notes:
+- Provide **exactly one** of `user_id` or `coach_id`.
+
+**Response**: `200 OK` (MessageResponse)
 ```json
 {
-  "message": "Permission assigned."
+  "message": "Permission assigned.",
+  "success": true,
+  "data": null
 }
 ```
 
@@ -295,10 +321,15 @@ Base path: `/api/v1/permissions`
   "coach_id": null
 }
 ```
-**Response**: `200 OK`
+Notes:
+- Provide **exactly one** of `user_id` or `coach_id`.
+
+**Response**: `200 OK` (MessageResponse)
 ```json
 {
-  "message": "Permission revoked."
+  "message": "Permission revoked.",
+  "success": true,
+  "data": null
 }
 ```
 
@@ -317,14 +348,8 @@ Base path: `/api/v1/coaches`
   "name": "string",
   "username": "string",
   "password": "string",
-  "phone_number": "string (optional)",
-  "email": "string (optional)",
-  "address": "string (optional)",
-  "contract_start_date": "date",
-  "contract_end_date": "date",
-  "hourly_rate": "number",
-  "school_ids": [1, 2],
-  "batch_ids": [1, 2]
+  "schools": [1, 2],
+  "batches": [1, 2]
 }
 ```
 **Response**: `201 Created`
@@ -334,7 +359,12 @@ Base path: `/api/v1/coaches`
   "coach": {
     "coach_id": 1,
     "name": "string",
-    "username": "string"
+    "schools": [
+      { "school_id": 1, "school_name": "string" }
+    ],
+    "batches": [
+      { "batch_id": 1, "batch_name": "string", "school_id": 1, "school_name": "string" }
+    ]
   }
 }
 ```
@@ -343,6 +373,12 @@ Base path: `/api/v1/coaches`
 **Description**: Get pre-create data (available schools and batches)  
 **Authentication**: Required (Admin only)  
 **Response**: `200 OK`
+```json
+{
+  "schools": [{ "school_id": 1, "school_name": "string" }],
+  "batches": [{ "batch_id": 1, "batch_name": "string", "school_id": 1, "school_name": "string" }]
+}
+```
 
 ### GET `/api/v1/coaches/`
 **Description**: List all coaches  
@@ -351,23 +387,72 @@ Base path: `/api/v1/coaches`
 - `skip`: Number of records to skip (default: 0)
 - `limit`: Maximum number of records to return (default: 100)
 
-**Response**: `200 OK` (Array of coach details)
+**Response**: `200 OK`
+```json
+[
+  {
+    "coach_id": 1,
+    "name": "string",
+    "schools": [
+      { "school_id": 1, "school_name": "string" }
+    ],
+    "batches": [
+      { "batch_id": 1, "batch_name": "string", "school_id": 1, "school_name": "string" }
+    ]
+  }
+]
+```
 
 ### GET `/api/v1/coaches/{coach_id}`
 **Description**: Get specific coach by ID  
 **Authentication**: Required  
 **Response**: `200 OK`
+```json
+{
+  "coach_id": 1,
+  "name": "string",
+  "schools": [
+    { "school_id": 1, "school_name": "string" }
+  ],
+  "batches": [
+    { "batch_id": 1, "batch_name": "string", "school_id": 1, "school_name": "string" }
+  ]
+}
+```
 
 ### PUT `/api/v1/coaches/{coach_id}`
 **Description**: Update coach information  
 **Authentication**: Required (Admin only)  
-**Request Body**: Similar to create but all fields optional  
+**Request Body** (all fields optional):
+```json
+{
+  "name": "string",
+  "password": "string",
+  "schools": [1, 2],
+  "batches": [1, 2]
+}
+```
 **Response**: `200 OK`
+```json
+{
+  "message": "Coach updated successfully",
+  "coach": {
+    "coach_id": 1,
+    "name": "string",
+    "schools": [
+      { "school_id": 1, "school_name": "string" }
+    ],
+    "batches": [
+      { "batch_id": 1, "batch_name": "string", "school_id": 1, "school_name": "string" }
+    ]
+  }
+}
+```
 
 ### DELETE `/api/v1/coaches/{coach_id}`
 **Description**: Delete a coach  
 **Authentication**: Required (Admin only)  
-**Response**: `204 No Content`
+**Response**: `204 No Content` (empty body)
 
 ---
 
@@ -382,20 +467,44 @@ Base path: `/api/v1/students`
 ```json
 {
   "name": "string",
-  "date_of_birth": "date",
-  "gender": "male|female|other",
-  "batch_id": 1,
+  "age": 12,
   "school_id": 1,
-  "phone_number": "string (optional)",
-  "emergency_contact": "string (optional)"
+  "coach_id": 10,
+  "batch_id": 1
 }
 ```
 **Response**: `201 Created`
+```json
+{
+  "name": "string",
+  "age": 12,
+  "school_id": 1,
+  "coach_id": 10,
+  "batch_id": 1,
+  "id": 100,
+  "created_at": "2026-01-20T12:00:00Z",
+  "updated_at": null
+}
+```
 
 ### GET `/api/v1/students/pre-create`
 **Description**: Get pre-create data (available schools and batches)  
 **Authentication**: Required (Admin only)  
 **Response**: `200 OK`
+```json
+{
+  "schools": [{ "school_id": 1, "school_name": "string" }],
+  "batches": [{ "batch_id": 1, "batch_name": "string", "school_id": 1, "school_name": "string" }],
+  "coaches": [
+    {
+      "coach_id": 10,
+      "coach_name": "string",
+      "schools": [{ "school_id": 1, "school_name": "string" }],
+      "batches": [{ "batch_id": 1, "batch_name": "string", "school_id": 1, "school_name": "string" }]
+    }
+  ]
+}
+```
 
 ### GET `/api/v1/students/`
 **Description**: List all students  
@@ -404,22 +513,70 @@ Base path: `/api/v1/students`
 - `skip`: Number of records to skip (default: 0)
 - `limit`: Maximum number of records to return (default: 100)
 
-**Response**: `200 OK` (Array of student details)
+**Response**: `200 OK`
+```json
+[
+  {
+    "id": 100,
+    "name": "string",
+    "age": 12,
+    "school_id": 1,
+    "coach_id": 10,
+    "batch_id": 1,
+    "created_at": "2026-01-20T12:00:00Z",
+    "updated_at": null
+  }
+]
+```
 
 ### GET `/api/v1/students/{student_id}`
 **Description**: Get specific student by ID  
 **Authentication**: Required  
 **Response**: `200 OK`
+```json
+{
+  "id": 100,
+  "name": "string",
+  "age": 12,
+  "school_id": 1,
+  "coach_id": 10,
+  "batch_id": 1,
+  "created_at": "2026-01-20T12:00:00Z",
+  "updated_at": null
+}
+```
 
 ### PUT `/api/v1/students/{student_id}`
 **Description**: Update student information  
 **Authentication**: Required (Admin only)  
+**Request Body** (all fields optional):
+```json
+{
+  "name": "string",
+  "age": 13,
+  "school_id": 1,
+  "coach_id": 10,
+  "batch_id": 2
+}
+```
 **Response**: `200 OK`
+```json
+{
+  "id": 100,
+  "name": "string",
+  "age": 13,
+  "school_id": 1,
+  "coach_id": 10,
+  "batch_id": 2,
+  "created_at": "2026-01-20T12:00:00Z",
+  "updated_at": "2026-01-21T12:00:00Z"
+}
+```
 
 ### DELETE `/api/v1/students/{student_id}`
 **Description**: Delete a student  
 **Authentication**: Required (Admin only)  
-**Response**: `204 No Content`
+**Response**: `204 No Content` (empty body)
 
 ---
 
@@ -433,13 +590,16 @@ Base path: `/api/v1/schools`
 **Request Body**:
 ```json
 {
-  "name": "string",
-  "address": "string (optional)",
-  "contact_number": "string (optional)",
-  "email": "string (optional)"
+  "name": "string"
 }
 ```
 **Response**: `201 Created`
+```json
+{
+  "school_id": 1,
+  "school_name": "string"
+}
+```
 
 ### GET `/api/v1/schools/`
 **Description**: List all schools  
@@ -448,22 +608,54 @@ Base path: `/api/v1/schools`
 - `skip`: Number of records to skip (default: 0)
 - `limit`: Maximum number of records to return (default: 100)
 
-**Response**: `200 OK` (Array of school details)
+**Response**: `200 OK`
+```json
+[
+  {
+    "id": 1,
+    "name": "string",
+    "created_at": "2026-01-20T12:00:00Z",
+    "updated_at": null
+  }
+]
+```
 
 ### GET `/api/v1/schools/{school_id}`
 **Description**: Get specific school by ID  
 **Authentication**: Required  
 **Response**: `200 OK`
+```json
+{
+  "id": 1,
+  "name": "string",
+  "created_at": "2026-01-20T12:00:00Z",
+  "updated_at": null
+}
+```
 
 ### PUT `/api/v1/schools/{school_id}`
 **Description**: Update school information  
 **Authentication**: Required (Admin only)  
+**Request Body** (all fields optional):
+```json
+{
+  "name": "string"
+}
+```
 **Response**: `200 OK`
+```json
+{
+  "id": 1,
+  "name": "string",
+  "created_at": "2026-01-20T12:00:00Z",
+  "updated_at": "2026-01-21T12:00:00Z"
+}
+```
 
 ### DELETE `/api/v1/schools/{school_id}`
 **Description**: Delete a school  
 **Authentication**: Required (Admin only)  
-**Response**: `204 No Content`
+**Response**: `204 No Content` (empty body)
 
 ---
 
@@ -477,19 +669,42 @@ Base path: `/api/v1/batches`
 **Request Body**:
 ```json
 {
-  "batch_name": "string",
   "school_id": 1,
-  "coach_id": 1,
-  "start_date": "date",
-  "end_date": "date (optional)"
+  "batch_name": "string",
+  "schedule": [
+    { "day_of_week": "Monday", "start_time": "04:00 PM", "end_time": "05:00 PM" }
+  ]
 }
 ```
 **Response**: `201 Created`
+```json
+{
+  "batch_id": 1,
+  "batch_name": "string",
+  "school_id": 1,
+  "school_name": "string",
+  "schedule": [
+    { "schedule_id": 1, "day_of_week": "Monday", "start_time": "04:00 PM", "end_time": "05:00 PM" }
+  ]
+}
+```
 
 ### GET `/api/v1/batches/pre-create`
 **Description**: Get pre-create data (available schools and coaches)  
 **Authentication**: Required (Admin only)  
 **Response**: `200 OK`
+```json
+{
+  "schools": [
+    {
+      "school_id": 1,
+      "school_name": "string",
+      "coaches": [{ "coach_id": 10, "coach_name": "string" }]
+    }
+  ],
+  "days_of_week": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+}
+```
 
 ### GET `/api/v1/batches/`
 **Description**: List all batches  
@@ -498,22 +713,75 @@ Base path: `/api/v1/batches`
 - `skip`: Number of records to skip (default: 0)
 - `limit`: Maximum number of records to return (default: 100)
 
-**Response**: `200 OK` (Array of batch details)
+**Response**: `200 OK`
+```json
+[
+  {
+    "batch_id": 1,
+    "batch_name": "string",
+    "school_id": 1,
+    "school_name": "string",
+    "schedule": [
+      { "schedule_id": 1, "day_of_week": "Monday", "start_time": "04:00 PM", "end_time": "05:00 PM" }
+    ],
+    "created_at": "2026-01-20T12:00:00Z",
+    "updated_at": null
+  }
+]
+```
 
 ### GET `/api/v1/batches/{batch_id}`
 **Description**: Get specific batch by ID  
 **Authentication**: Required  
 **Response**: `200 OK`
+```json
+{
+  "batch_id": 1,
+  "batch_name": "string",
+  "school_id": 1,
+  "school_name": "string",
+  "schedule": [
+    { "schedule_id": 1, "day_of_week": "Monday", "start_time": "04:00 PM", "end_time": "05:00 PM" }
+  ],
+  "created_at": "2026-01-20T12:00:00Z",
+  "updated_at": null
+}
+```
 
 ### PUT `/api/v1/batches/{batch_id}`
 **Description**: Update batch information  
 **Authentication**: Required (Admin only)  
+**Request Body** (all fields optional):
+```json
+{
+  "batch_name": "string",
+  "school_id": 1,
+  "schedule": [
+    { "schedule_id": 1, "day_of_week": "Monday", "start_time": "04:30 PM", "end_time": "05:30 PM" },
+    { "day_of_week": "Wednesday", "start_time": "04:00 PM", "end_time": "05:00 PM" }
+  ]
+}
+```
 **Response**: `200 OK`
+```json
+{
+  "batch_id": 1,
+  "batch_name": "string",
+  "school_id": 1,
+  "school_name": "string",
+  "schedule": [
+    { "schedule_id": 1, "day_of_week": "Monday", "start_time": "04:30 PM", "end_time": "05:30 PM" },
+    { "schedule_id": 2, "day_of_week": "Wednesday", "start_time": "04:00 PM", "end_time": "05:00 PM" }
+  ],
+  "created_at": "2026-01-20T12:00:00Z",
+  "updated_at": "2026-01-21T12:00:00Z"
+}
+```
 
 ### DELETE `/api/v1/batches/{batch_id}`
 **Description**: Delete a batch  
 **Authentication**: Required (Admin only)  
-**Response**: `204 No Content`
+**Response**: `204 No Content` (empty body)
 
 ---
 
@@ -524,21 +792,24 @@ Base path: `/api/v1/physical`
 ### POST `/api/v1/physical/sessions`
 **Description**: Create a new physical assessment session with results  
 **Authentication**: Required  
-**Permission**: `PHYSICAL_SESSIONS_ADD`  
+**Required permission**: `physical_sessions_add`  
 **Request Body**:
 ```json
 {
+  "coach_id": null,
+  "school_id": null,
   "batch_id": 1,
-  "coach_id": 1,
-  "session_date": "date",
-  "notes": "string (optional)",
+  "date_of_session": "2026-01-20",
+  "student_count": 21,
+  "admin_override": false,
   "results": [
     {
-      "student_id": 1,
-      "exercise_levels": {
-        "sit_ups": 1,
-        "push_ups": 2
-      }
+      "student_id": 100,
+      "discipline": "string",
+      "curl_up": 0,
+      "push_up": 0,
+      "sit_and_reach": 0.0,
+      "is_present": true
     }
   ]
 }
@@ -548,55 +819,228 @@ Base path: `/api/v1/physical`
 ### GET `/api/v1/physical/sessions/pre-create`
 **Description**: Get pre-create data for physical assessment sessions  
 **Authentication**: Required  
-**Permission**: `PHYSICAL_SESSIONS_ADD`  
-**Response**: `200 OK`
+**Required permission**: `physical_sessions_add`  
+**Response**: `201 Created`
+```json
+{
+  "id": 123,
+  "coach_id": null,
+  "school_id": null,
+  "batch_id": 1,
+  "date_of_session": "2026-01-20",
+  "student_count": 21,
+  "created_at": "2026-01-20T12:00:00Z",
+  "updated_at": null,
+  "coach_name": null,
+  "batch": { "batch_id": 1, "batch_name": "string", "school_id": 1, "school_name": "string" },
+  "school": null,
+  "batch_schedule": [
+    { "schedule_id": 1, "day_of_week": "Monday", "start_time": "04:00 PM", "end_time": "05:00 PM" }
+  ],
+  "results": [
+    {
+      "id": 1000,
+      "session_id": 123,
+      "student_id": 100,
+      "student": { "id": 100, "name": "string", "age": 12, "school_id": 1, "coach_id": 10, "batch_id": 1, "created_at": "2026-01-20T12:00:00Z", "updated_at": null },
+      "discipline": "string",
+      "curl_up": 0,
+      "push_up": 0,
+      "sit_and_reach": 0.0,
+      "is_present": true,
+      "created_at": "2026-01-20T12:00:00Z",
+      "updated_at": null
+    }
+  ]
+}
+```
+```json
+{
+  "batches": [
+    {
+      "batch_id": 1,
+      "batch_name": "string",
+      "school_id": 1,
+      "school_name": "string",
+      "schedule": [
+        { "schedule_id": 1, "day_of_week": "Monday", "start_time": "04:00 PM", "end_time": "05:00 PM" }
+      ],
+      "coaches": [ { "coach_id": 10, "coach_name": "string" } ],
+      "students": [ { "student_id": 100, "student_name": "string", "age": 12 } ]
+    }
+  ]
+}
+```
 
 ### GET `/api/v1/physical/sessions`
 **Description**: Get all physical assessment sessions (admin or coach view)  
 **Authentication**: Required  
-**Permission**: `PHYSICAL_SESSIONS_VIEW`  
+**Required permission**: `physical_sessions_view`  
 **Response**: `200 OK`
+```json
+{
+  "sessions": [
+    {
+      "session_id": 123,
+      "batch_id": 1,
+      "batch_name": "string",
+      "school_id": 1,
+      "school_name": "string",
+      "coach_id": null,
+      "coach_name": null,
+      "date_of_session": "2026-01-20",
+      "student_count": 21
+    }
+  ]
+}
+```
 
 ### GET `/api/v1/physical/sessions/{session_id}`
 **Description**: Get specific physical assessment session by ID  
 **Authentication**: Required  
-**Permission**: `PHYSICAL_SESSIONS_VIEW`  
+**Required permission**: `physical_sessions_view`  
 **Response**: `200 OK`
+```json
+{
+  "id": 123,
+  "coach_id": null,
+  "school_id": null,
+  "batch_id": 1,
+  "date_of_session": "2026-01-20",
+  "student_count": 21,
+  "created_at": "2026-01-20T12:00:00Z",
+  "updated_at": null,
+  "coach_name": null,
+  "batch": { "batch_id": 1, "batch_name": "string", "school_id": 1, "school_name": "string" },
+  "school": null,
+  "batch_schedule": [ { "schedule_id": 1, "day_of_week": "Monday", "start_time": "04:00 PM", "end_time": "05:00 PM" } ],
+  "results": [
+    {
+      "id": 1000,
+      "session_id": 123,
+      "student_id": 100,
+      "student": { "id": 100, "name": "string", "age": 12, "school_id": 1, "coach_id": 10, "batch_id": 1, "created_at": "2026-01-20T12:00:00Z", "updated_at": null },
+      "discipline": "string",
+      "curl_up": 0,
+      "push_up": 0,
+      "sit_and_reach": 0.0,
+      "is_present": true,
+      "created_at": "2026-01-20T12:00:00Z",
+      "updated_at": null
+    }
+  ]
+}
+```
 
 ### PUT `/api/v1/physical/sessions/{session_id}`
 **Description**: Update physical assessment session  
 **Authentication**: Required  
-**Permission**: `PHYSICAL_SESSIONS_EDIT`  
+**Required permission**: `physical_sessions_edit`  
+**Request Body** (partial update):
+```json
+{
+  "coach_id": null,
+  "school_id": null,
+  "batch_id": 1,
+  "date_of_session": "2026-01-21",
+  "student_count": 22,
+  "results": [ { "student_id": 100, "discipline": "string", "curl_up": 5 } ]
+}
+```
+
 **Response**: `200 OK`
+```json
+{
+  "id": 123,
+  "coach_id": null,
+  "school_id": null,
+  "batch_id": 1,
+  "date_of_session": "2026-01-21",
+  "student_count": 22,
+  "created_at": "2026-01-20T12:00:00Z",
+  "updated_at": "2026-01-21T12:00:00Z",
+  "coach_name": null,
+  "batch": { "batch_id": 1, "batch_name": "string", "school_id": 1, "school_name": "string" },
+  "school": null,
+  "batch_schedule": [],
+  "results": []
+}
+```
 
 ### DELETE `/api/v1/physical/sessions/{session_id}`
 **Description**: Delete physical assessment session  
 **Authentication**: Required  
-**Permission**: `PHYSICAL_SESSIONS_EDIT`  
+**Required permission**: `physical_sessions_edit`  
 **Response**: `204 No Content`
 
 ### GET `/api/v1/physical/students`
 **Description**: Get physical assessment student summary (admin or coach view)  
 **Authentication**: Required  
-**Permission**: `PHYSICAL_SESSIONS_VIEW`  
+**Required permission**: `physical_sessions_view`  
 **Response**: `200 OK`
+```json
+{
+  "students": [
+    {
+      "student_id": 100,
+      "student_name": "string",
+      "batch_id": 1,
+      "batch_name": "string",
+      "school_id": 1,
+      "school_name": "string",
+      "total_sessions": 3,
+      "last_session_date": "2026-01-20"
+    }
+  ]
+}
+```
 
 ### GET `/api/v1/physical/students/{student_id}`
 **Description**: Get detailed physical assessment results for a student  
 **Authentication**: Required  
-**Permission**: `PHYSICAL_SESSIONS_VIEW`  
+**Required permission**: `physical_sessions_view`  
 **Response**: `200 OK`
+```json
+{
+  "student_id": 100,
+  "student_name": "string",
+  "batch_id": 1,
+  "batch_name": "string",
+  "school_id": 1,
+  "school_name": "string",
+  "sessions": [
+    {
+      "session_id": 123,
+      "date_of_session": "2026-01-20",
+      "coach_id": null,
+      "coach_name": null,
+      "result": {
+        "id": 1000,
+        "session_id": 123,
+        "student_id": 100,
+        "discipline": "string",
+        "curl_up": 0,
+        "push_up": 0,
+        "sit_and_reach": 0.0,
+        "is_present": true,
+        "created_at": "2026-01-20T12:00:00Z",
+        "updated_at": null
+      }
+    }
+  ]
+}
+```
 
 ### PUT `/api/v1/physical/students/{student_id}`
 **Description**: Update physical assessment results for a student  
 **Authentication**: Required  
-**Permission**: `PHYSICAL_SESSIONS_EDIT`  
+**Required permission**: `physical_sessions_edit`  
 **Response**: `200 OK`
 
 ### DELETE `/api/v1/physical/students/{student_id}`
 **Description**: Delete physical assessment results for a student  
 **Authentication**: Required  
-**Permission**: `PHYSICAL_SESSIONS_EDIT`  
+**Required permission**: `physical_sessions_edit`  
 **Response**: `204 No Content`
 
 ### GET `/api/v1/physical/level-mappings`
@@ -616,36 +1060,121 @@ Base path: `/api/v1/archery`
 **Request Body**:
 ```json
 {
+  "coach_id": null,
+  "school_id": null,
   "batch_id": 1,
-  "coach_id": 1,
-  "session_date": "date",
-  "distance": 10,
-  "notes": "string (optional)",
+  "date_of_session": "2026-01-20",
+  "distance": 18,
   "results": [
     {
-      "student_id": 1,
-      "score": 85,
-      "arrows_shot": 30
+      "student_id": 100,
+      "rounds": [
+        {
+          "number": 1,
+          "shots": [
+            { "x_coordinate": 0.0, "y_coordinate": 0.0, "score": 10, "max_score": 10, "arrow_number": 1 }
+          ]
+        }
+      ]
     }
   ]
 }
 ```
 **Response**: `201 Created`
+```json
+{
+  "id": 321,
+  "coach_id": null,
+  "school_id": null,
+  "batch_id": 1,
+  "date_of_session": "2026-01-20",
+  "distance": 18,
+  "created_at": "2026-01-20T12:00:00Z",
+  "updated_at": null,
+  "coach_name": null,
+  "batch": { "batch_id": 1, "batch_name": "string", "school_id": 1, "school_name": "string" },
+  "school": null,
+  "results": [
+    {
+      "student_id": 100,
+      "student": { "id": 100, "name": "string", "age": 12, "school_id": 1, "coach_id": 10, "batch_id": 1, "created_at": "2026-01-20T12:00:00Z", "updated_at": null },
+      "rounds": [ { "number": 1, "shots": [ { "id": 1, "x_coordinate": 0.0, "y_coordinate": 0.0, "score": 10, "max_score": 10, "arrow_number": 1, "created_at": "2026-01-20T12:00:00Z", "updated_at": null } ] } ]
+    }
+  ],
+  "student_count": 1
+}
+```
 
 ### GET `/api/v1/archery/sessions/pre-create`
 **Description**: Get pre-create data for archery sessions  
 **Authentication**: Required (Admin or Coach)  
 **Response**: `200 OK`
+```json
+{
+  "batches": [
+    {
+      "batch_id": 1,
+      "batch_name": "string",
+      "school_id": 1,
+      "school_name": "string",
+      "schedule": [ { "schedule_id": 1, "day_of_week": "Monday", "start_time": "04:00 PM", "end_time": "05:00 PM" } ],
+      "coaches": [ { "coach_id": 10, "coach_name": "string" } ],
+      "students": [ { "student_id": 100, "student_name": "string", "age": 12 } ]
+    }
+  ]
+}
+```
 
 ### GET `/api/v1/archery/sessions`
 **Description**: Get all archery practice sessions (admin or coach view)  
 **Authentication**: Required  
 **Response**: `200 OK`
+```json
+{
+  "sessions": [
+    {
+      "session_id": 321,
+      "batch_id": 1,
+      "batch_name": "string",
+      "school_id": 1,
+      "school_name": "string",
+      "coach_id": null,
+      "coach_name": null,
+      "date_of_session": "2026-01-20",
+      "distance": 18.0,
+      "student_count": 10
+    }
+  ]
+}
+```
 
 ### GET `/api/v1/archery/sessions/{session_id}`
 **Description**: Get specific archery practice session by ID  
 **Authentication**: Required  
 **Response**: `200 OK`
+```json
+{
+  "id": 321,
+  "coach_id": null,
+  "school_id": null,
+  "batch_id": 1,
+  "date_of_session": "2026-01-20",
+  "distance": 18.0,
+  "created_at": "2026-01-20T12:00:00Z",
+  "updated_at": null,
+  "coach_name": null,
+  "batch": { "batch_id": 1, "batch_name": "string", "school_id": 1, "school_name": "string" },
+  "school": null,
+  "results": [
+    {
+      "student_id": 100,
+      "student": { "id": 100, "name": "string", "age": 12, "school_id": 1, "coach_id": 10, "batch_id": 1, "created_at": "2026-01-20T12:00:00Z", "updated_at": null },
+      "rounds": [ { "number": 1, "shots": [ { "id": 1, "x_coordinate": 0.0, "y_coordinate": 0.0, "score": 10, "max_score": 10, "arrow_number": 1, "created_at": "2026-01-20T12:00:00Z", "updated_at": null } ] } ]
+    }
+  ],
+  "student_count": 1
+}
+```
 
 ### PUT `/api/v1/archery/sessions/{session_id}`
 **Description**: Update archery practice session  
@@ -661,11 +1190,49 @@ Base path: `/api/v1/archery`
 **Description**: Get archery student summary (admin or coach view)  
 **Authentication**: Required  
 **Response**: `200 OK`
+```json
+{
+  "students": [
+    {
+      "student_id": 100,
+      "student_name": "string",
+      "batch_id": 1,
+      "batch_name": "string",
+      "school_id": 1,
+      "school_name": "string",
+      "total_sessions": 5,
+      "total_shots": 150,
+      "average_score": 8.6,
+      "last_session_date": "2026-01-20"
+    }
+  ]
+}
+```
 
 ### GET `/api/v1/archery/students/{student_id}`
 **Description**: Get detailed archery results for a student  
 **Authentication**: Required  
 **Response**: `200 OK`
+```json
+{
+  "student_id": 100,
+  "student_name": "string",
+  "batch_id": 1,
+  "batch_name": "string",
+  "school_id": 1,
+  "school_name": "string",
+  "sessions": [
+    {
+      "session_id": 321,
+      "date_of_session": "2026-01-20",
+      "coach_id": null,
+      "coach_name": null,
+      "distance": 18.0,
+      "rounds": [ { "number": 1, "shots": [ { "id": 1, "x_coordinate": 0.0, "y_coordinate": 0.0, "score": 10, "max_score": 10, "arrow_number": 1, "created_at": "2026-01-20T12:00:00Z", "updated_at": null } ] } ]
+    }
+  ]
+}
+```
 
 ### PUT `/api/v1/archery/students/{student_id}`
 **Description**: Update archery results for a student  
@@ -689,11 +1256,20 @@ Base path: `/api/v1/archery/tournaments`
 **Request Body**:
 ```json
 {
-  "category_name": "string",
+  "name": "string",
   "description": "string (optional)"
 }
 ```
 **Response**: `201 Created`
+```json
+{
+  "id": 11,
+  "name": "Recurve Open",
+  "description": "Optional description",
+  "created_at": "2026-01-20T12:00:00Z",
+  "updated_at": null
+}
+```
 
 ### DELETE `/api/v1/archery/tournaments/categories/{category_id}`
 **Description**: Delete an archery tournament category  
@@ -711,24 +1287,58 @@ Base path: `/api/v1/archery/tournaments`
 **Request Body**:
 ```json
 {
+  "coach_id": null,
+  "school_id": null,
   "batch_id": 1,
-  "coach_id": 1,
-  "session_date": "date",
-  "tournament_name": "string",
   "category_id": 1,
+  "tournament_name": "string",
+  "tournament_location": "string",
+  "date_of_session": "2026-01-20",
   "distance": 18,
-  "notes": "string (optional)",
   "results": [
     {
-      "student_id": 1,
-      "score": 290,
-      "arrows_shot": 60,
-      "rank": 1
+      "student_id": 100,
+      "rounds": [
+        {
+          "number": 1,
+          "shots": [
+            { "x_coordinate": 0.0, "y_coordinate": 0.0, "score": 10, "max_score": 10, "arrow_number": 1 }
+          ]
+        }
+      ]
     }
   ]
 }
 ```
 **Response**: `201 Created`
+```json
+{
+  "id": 901,
+  "coach_id": null,
+  "school_id": null,
+  "batch_id": 1,
+  "category_id": 1,
+  "tournament_name": "string",
+  "tournament_location": "string",
+  "date_of_session": "2026-01-20",
+  "distance": 18.0,
+  "created_at": "2026-01-20T12:00:00Z",
+  "updated_at": null,
+  "coach_name": null,
+  "batch": { "batch_id": 1, "batch_name": "string", "school_id": 1, "school_name": "string" },
+  "school": null,
+  "category": { "id": 1, "name": "string", "description": "Optional" },
+  "category_name_snapshot": "string",
+  "results": [
+    {
+      "student_id": 100,
+      "student": { "id": 100, "name": "string", "age": 12, "school_id": 1, "coach_id": 10, "batch_id": 1, "created_at": "2026-01-20T12:00:00Z", "updated_at": null },
+      "rounds": [ { "number": 1, "shots": [ { "id": 1, "x_coordinate": 0.0, "y_coordinate": 0.0, "score": 10, "max_score": 10, "arrow_number": 1, "created_at": "2026-01-20T12:00:00Z", "updated_at": null } ] } ]
+    }
+  ],
+  "student_count": 1
+}
+```
 
 ### GET `/api/v1/archery/tournaments/sessions`
 **Description**: Get all archery tournament sessions (admin or coach view)  
@@ -752,14 +1362,300 @@ Base path: `/api/v1/archery/tournaments`
 
 ---
 
+## Attendance
+
+Base path: `/api/v1/attendance`
+
+### Workflow
+
+- **Coach marks attendance**: When a coach creates an attendance session, they are automatically marked as `present` (auto-marked).
+- **Admin marks attendance**: Admin can mark both student and coach attendance separately in the same request.
+- **Access control**: Coaches can only see/edit sessions for their assigned batches.
+
+### GET `/api/v1/attendance/sessions/pre-create`
+**Description**: Get data needed to create an attendance session (batches, students, coaches)  
+**Authentication**: Required (Admin or Coach)  
+**Response**: `200 OK`
+```json
+{
+  "batches": [
+    {
+      "id": 1,
+      "name": "Batch A",
+      "school_id": 1,
+      "school_name": "School Name"
+    }
+  ],
+  "students_by_batch": {
+    "1": [
+      { "id": 100, "name": "Student Name", "batch_id": 1 }
+    ]
+  },
+  "coaches": [
+    { "id": 10, "name": "Coach Name" }
+  ]
+}
+```
+**Note**: Coaches will only see batches they are assigned to. `coaches` array is only populated for admins.
+
+### POST `/api/v1/attendance/sessions`
+**Description**: Create a new attendance session  
+**Authentication**: Required (Admin or Coach)  
+**Request Body**:
+```json
+{
+  "batch_id": 1,
+  "school_id": 1,
+  "date": "2026-01-24",
+  "notes": "Optional notes",
+  "student_attendances": [
+    { "student_id": 100, "status": "present", "notes": "Optional" },
+    { "student_id": 101, "status": "absent", "notes": "Sick" }
+  ],
+  "coach_attendances": [
+    { "coach_id": 10, "status": "present", "notes": "Optional" }
+  ]
+}
+```
+**Notes**:
+- `status` can be `"present"` or `"absent"`
+- For **coaches**: `coach_attendances` is ignored - the coach is automatically marked present
+- For **admins**: can specify both `student_attendances` and `coach_attendances`
+- Only one session per batch per date is allowed
+
+**Response**: `201 Created`
+```json
+{
+  "id": 1,
+  "batch_id": 1,
+  "batch_name": "Batch A",
+  "school_id": 1,
+  "school_name": "School Name",
+  "date": "2026-01-24",
+  "marked_by_type": "coach",
+  "marked_by_user_id": null,
+  "marked_by_coach_id": 10,
+  "marked_by_name": "Coach Name",
+  "notes": "Optional notes",
+  "student_attendances": [
+    {
+      "id": 1,
+      "session_id": 1,
+      "student_id": 100,
+      "student_name": "Student Name",
+      "status": "present",
+      "notes": null,
+      "created_at": "2026-01-24T12:00:00Z",
+      "updated_at": null
+    }
+  ],
+  "coach_attendances": [
+    {
+      "id": 1,
+      "session_id": 1,
+      "coach_id": 10,
+      "coach_name": "Coach Name",
+      "status": "present",
+      "auto_marked": true,
+      "notes": "Auto-marked present for marking student attendance",
+      "created_at": "2026-01-24T12:00:00Z",
+      "updated_at": null
+    }
+  ],
+  "present_count": 1,
+  "absent_count": 1,
+  "total_students": 2,
+  "created_at": "2026-01-24T12:00:00Z",
+  "updated_at": null
+}
+```
+
+### GET `/api/v1/attendance/sessions`
+**Description**: Get all attendance sessions with optional filters  
+**Authentication**: Required  
+**Query Parameters**:
+- `batch_id`: Filter by batch ID (optional)
+- `school_id`: Filter by school ID (optional)
+- `start_date`: Filter by start date, format `YYYY-MM-DD` (optional)
+- `end_date`: Filter by end date, format `YYYY-MM-DD` (optional)
+- `skip`: Number of records to skip (default: 0)
+- `limit`: Maximum records to return (default: 100, max: 500)
+
+**Note**: Coaches will only see sessions for their assigned batches.
+
+**Response**: `200 OK`
+```json
+{
+  "sessions": [
+    {
+      "id": 1,
+      "batch_id": 1,
+      "batch_name": "Batch A",
+      "school_id": 1,
+      "school_name": "School Name",
+      "date": "2026-01-24",
+      "marked_by_type": "coach",
+      "marked_by_name": "Coach Name",
+      "present_count": 5,
+      "absent_count": 2,
+      "total_students": 7,
+      "coach_present_count": 1,
+      "coach_absent_count": 0,
+      "total_coaches": 1
+    }
+  ],
+  "total": 1
+}
+```
+
+### GET `/api/v1/attendance/sessions/{session_id}`
+**Description**: Get specific attendance session by ID  
+**Authentication**: Required  
+**Response**: `200 OK` (Full AttendanceSessionResponse as shown in POST response)
+
+### PUT `/api/v1/attendance/sessions/{session_id}`
+**Description**: Update an attendance session  
+**Authentication**: Required (Admin or Coach)  
+**Request Body** (all fields optional):
+```json
+{
+  "date": "2026-01-25",
+  "notes": "Updated notes",
+  "student_attendances": [
+    { "student_id": 100, "status": "absent", "notes": "Changed to absent" }
+  ],
+  "coach_attendances": [
+    { "coach_id": 10, "status": "present" }
+  ]
+}
+```
+**Note**: Coaches cannot update `coach_attendances`.
+
+**Response**: `200 OK` (Full AttendanceSessionResponse)
+
+### DELETE `/api/v1/attendance/sessions/{session_id}`
+**Description**: Delete an attendance session  
+**Authentication**: Required (Admin only)  
+**Response**: `204 No Content`
+
+### PATCH `/api/v1/attendance/sessions/{session_id}/students/{student_id}`
+**Description**: Update a specific student's attendance in a session  
+**Authentication**: Required (Admin or Coach)  
+**Request Body**:
+```json
+{
+  "status": "absent",
+  "notes": "Left early"
+}
+```
+**Response**: `200 OK`
+```json
+{
+  "id": 1,
+  "session_id": 1,
+  "student_id": 100,
+  "student_name": "Student Name",
+  "status": "absent",
+  "notes": "Left early",
+  "created_at": "2026-01-24T12:00:00Z",
+  "updated_at": "2026-01-24T13:00:00Z"
+}
+```
+
+### PATCH `/api/v1/attendance/sessions/{session_id}/coaches/{coach_id}`
+**Description**: Update a specific coach's attendance in a session  
+**Authentication**: Required (Admin only)  
+**Request Body**:
+```json
+{
+  "status": "absent",
+  "notes": "Could not attend"
+}
+```
+**Response**: `200 OK`
+```json
+{
+  "id": 1,
+  "session_id": 1,
+  "coach_id": 10,
+  "coach_name": "Coach Name",
+  "status": "absent",
+  "auto_marked": false,
+  "notes": "Could not attend",
+  "created_at": "2026-01-24T12:00:00Z",
+  "updated_at": "2026-01-24T13:00:00Z"
+}
+```
+
+### GET `/api/v1/attendance/students/{student_id}/history`
+**Description**: Get attendance history for a specific student  
+**Authentication**: Required  
+**Query Parameters**:
+- `start_date`: Filter by start date (optional)
+- `end_date`: Filter by end date (optional)
+
+**Response**: `200 OK`
+```json
+{
+  "student_id": 100,
+  "student_name": "Student Name",
+  "total_sessions": 10,
+  "present_count": 8,
+  "absent_count": 2,
+  "attendance_percentage": 80.0,
+  "history": [
+    {
+      "session_id": 1,
+      "date": "2026-01-24",
+      "batch_name": "Batch A",
+      "school_name": "School Name",
+      "status": "present",
+      "marked_by_type": "coach",
+      "marked_by_name": "Coach Name"
+    }
+  ]
+}
+```
+
+### GET `/api/v1/attendance/coaches/{coach_id}/history`
+**Description**: Get attendance history for a specific coach  
+**Authentication**: Required  
+**Note**: Coaches can only view their own attendance history.
+**Query Parameters**:
+- `start_date`: Filter by start date (optional)
+- `end_date`: Filter by end date (optional)
+
+**Response**: `200 OK`
+```json
+{
+  "coach_id": 10,
+  "coach_name": "Coach Name",
+  "total_sessions": 15,
+  "present_count": 14,
+  "absent_count": 1,
+  "attendance_percentage": 93.33,
+  "history": [
+    {
+      "session_id": 1,
+      "date": "2026-01-24",
+      "batch_name": "Batch A",
+      "school_name": "School Name",
+      "status": "present",
+      "auto_marked": true
+    }
+  ]
+}
+```
+
+---
+
 ## Authentication & Authorization
 
 ### JWT Tokens
 
-The API uses JWT (JSON Web Tokens) for authentication:
+The API uses JWT (JSON Web Tokens) for authentication.
 
-- **Access Token**: Valid for 24 hours (default), used for API requests
-- **Refresh Token**: Valid for 7 days (default), used to obtain new access tokens
+Token expiry is configured via environment variables (`ACCESS_TOKEN_EXPIRE_HOURS`, `REFRESH_TOKEN_EXPIRE_HOURS`). Default is 6 hours.
 
 ### Using Tokens
 
@@ -784,7 +1680,7 @@ Granular permissions can be assigned to users beyond their role defaults. Common
 - `view_all_users`, `edit_all_users`
 - `assign_permissions`, `revoke_permissions`, `view_permissions`
 - `view_own_profile`, `edit_own_profile`
-- `PHYSICAL_SESSIONS_VIEW`, `PHYSICAL_SESSIONS_ADD`, `PHYSICAL_SESSIONS_EDIT`
+- Physical assessments: `physical_sessions_view`, `physical_sessions_add`, `physical_sessions_edit`
 
 ---
 
@@ -876,4 +1772,4 @@ List endpoints support pagination through query parameters:
 
 ---
 
-*Last Updated: December 2024*
+*Last Updated: 2026-01-24*

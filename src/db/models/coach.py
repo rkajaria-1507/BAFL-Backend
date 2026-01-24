@@ -42,6 +42,12 @@ class Coach(Base):
         "ArcheryTournamentSession",
         back_populates="coach",
     )
+    attendances = relationship("CoachAttendance", back_populates="coach", cascade="all, delete-orphan")
+    marked_attendance_sessions = relationship(
+        "AttendanceSession",
+        foreign_keys="AttendanceSession.marked_by_coach_id",
+        back_populates="marked_by_coach",
+    )
 
     batches = association_proxy("batch_assignments", "batch")
     schools = association_proxy("school_assignments", "school")

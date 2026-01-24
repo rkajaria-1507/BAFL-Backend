@@ -154,7 +154,7 @@ class RefreshTokenRepository:
             raise ValueError("Provide exactly one of user_id or coach_id when creating a refresh token")
 
         token = secrets.token_urlsafe(32)
-        expires_at = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        expires_at = datetime.utcnow() + timedelta(hours=settings.REFRESH_TOKEN_EXPIRE_HOURS)
         
         refresh_token = RefreshToken(
             token=token,

@@ -22,3 +22,4 @@ class School(Base):
         "ArcheryTournamentSession",
         back_populates="school",
     )
+    attendance_sessions = relationship("AttendanceSession", back_populates="school")

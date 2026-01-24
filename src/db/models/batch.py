@@ -20,6 +20,7 @@ class Batch(Base):
         "ArcheryTournamentSession",
         back_populates="batch",
     )
+    attendance_sessions = relationship("AttendanceSession", back_populates="batch", cascade="all, delete-orphan")
     coach_assignments = relationship("CoachBatch", back_populates="batch", cascade="all, delete-orphan")
     schedules = relationship("BatchSchedule", back_populates="batch", cascade="all, delete-orphan")
 

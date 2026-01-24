@@ -49,6 +49,11 @@ from src.db.models.archery_tournament import (
     ArcheryTournamentResult,
     ArcheryTournamentCategory,
 )
+from src.db.models.attendance import (
+    AttendanceSession,
+    StudentAttendance,
+    CoachAttendance,
+)
 
 
 def get_db() -> Generator[Session, None, None]:

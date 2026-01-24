@@ -69,7 +69,7 @@ class TokenHandler:
             expire = datetime.utcnow() + expires_delta
         else:
             expire = datetime.utcnow() + timedelta(
-                days=settings.ACCESS_TOKEN_EXPIRE_DAYS
+                hours=settings.ACCESS_TOKEN_EXPIRE_HOURS
             )
         
         to_encode.update({
