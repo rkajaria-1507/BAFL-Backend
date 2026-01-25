@@ -169,11 +169,8 @@ def update_attendance_session(
             and session_model.batch_id not in assigned_batch_ids
         ):
             raise HTTPException(status_code=403, detail="Access denied")
-        # Coaches cannot update coach attendance
-        if payload.coach_attendances is not None:
-            raise HTTPException(
-                status_code=403, detail="Coaches cannot update coach attendance"
-            )
+        # Coaches cannot update coach attendance - ignore it if provided
+        payload.coach_attendances = None
 
     result = AttendanceService.update_session(db, session_id, payload)
     if not result:

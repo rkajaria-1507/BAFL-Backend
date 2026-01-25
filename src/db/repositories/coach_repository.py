@@ -13,11 +13,25 @@ class CoachRepository:
 
     @staticmethod
     def get_by_id(db: Session, coach_id: int) -> Optional[Coach]:
-        return db.scalar(select(Coach).where(Coach.id == coach_id))
+        return db.scalar(
+            select(Coach)
+            .where(Coach.id == coach_id)
+            .options(
+                selectinload(Coach.school_assignments),
+                selectinload(Coach.batch_assignments)
+            )
+        )
 
     @staticmethod
     def get_by_username(db: Session, username: str) -> Optional[Coach]:
-        return db.scalar(select(Coach).where(Coach.username == username))
+        return db.scalar(
+            select(Coach)
+            .where(Coach.username == username)
+            .options(
+                selectinload(Coach.school_assignments),
+                selectinload(Coach.batch_assignments)
+            )
+        )
     
     @staticmethod
     def get_all(db: Session, skip: int = 0, limit: int = 100) -> List[Coach]:
