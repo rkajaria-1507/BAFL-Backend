@@ -44,7 +44,7 @@ def create_invoice(
     try:
         invoice = InvoiceService.create_invoice(db, payload, current_user.id)
         api_logger.info(f"Successfully created invoice '{invoice.invoice_no}' (ID: {invoice.id})")
-        return InvoiceCreateResponse(invoice_id=invoice.id, invoice_no=invoice.invoice_no)
+        return InvoiceCreateResponse(id=invoice.id, invoice_no=invoice.invoice_no)
     except Exception as e:
         api_logger.error(f"Failed to create invoice '{payload.invoice_no}': {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to create invoice: {str(e)}")
@@ -81,8 +81,30 @@ def get_invoices(
             end_date=end_date,
             template=template
         )
+        
+        # Convert invoices to response models with created_by_name
+        invoice_responses = []
+        for inv in invoices:
+            inv_dict = {
+                "id": inv.id,
+                "invoice_no": inv.invoice_no,
+                "heading": inv.heading,
+                "template": inv.template,
+                "frequency": inv.frequency,
+                "date": inv.date,
+                "school_id": inv.school_id,
+                "billed_from_name": inv.billed_from_name,
+                "billed_to_name": inv.billed_to_name,
+                "total_amount": inv.total_amount,
+                "created_by": inv.created_by,
+                "created_by_name": inv.creator.name if inv.creator else None,
+                "created_at": inv.created_at,
+                "updated_at": inv.updated_at
+            }
+            invoice_responses.append(InvoiceResponse(**inv_dict))
+        
         return InvoiceListResponse(
-            invoices=[InvoiceResponse.model_validate(inv) for inv in invoices],
+            invoices=invoice_responses,
             pagination=pagination
         )
     except Exception as e:
@@ -199,7 +221,7 @@ def duplicate_invoice(
             api_logger.warning(f"Invoice not found for duplication. Invoice ID: {invoice_id}")
             raise HTTPException(status_code=404, detail="Invoice not found")
         api_logger.info(f"Successfully duplicated invoice {invoice_id} to {new_invoice.id}")
-        return InvoiceCreateResponse(invoice_id=new_invoice.id, invoice_no=new_invoice.invoice_no)
+        return InvoiceCreateResponse(id=new_invoice.id, invoice_no=new_invoice.invoice_no)
     except HTTPException:
         raise
     except Exception as e:

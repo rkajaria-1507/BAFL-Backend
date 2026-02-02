@@ -78,11 +78,11 @@ class SignatorySchema(BaseModel):
 class InvoiceBase(BaseModel):
     """Base schema for invoices."""
     invoice_no: str = Field(..., max_length=50)
+    heading: str = Field(default="Invoice", max_length=100)
     template: str = Field(default="archery", max_length=50)
-    frequency: str = Field(default="monthly", max_length=20)
+    frequency: str = Field(default="monthly", max_length=50)
     date: date_type
     school_id: Optional[int] = None
-    notes: Optional[str] = None
 
 
 class InvoiceCreate(InvoiceBase):
@@ -98,8 +98,9 @@ class InvoiceCreate(InvoiceBase):
 class InvoiceUpdate(BaseModel):
     """Schema for updating invoices."""
     invoice_no: Optional[str] = Field(None, max_length=50)
+    heading: Optional[str] = Field(None, max_length=100)
     template: Optional[str] = Field(None, max_length=50)
-    frequency: Optional[str] = Field(None, max_length=20)
+    frequency: Optional[str] = Field(None, max_length=50)
     date: Optional[date_type] = None
     school_id: Optional[int] = None
     billed_from: Optional[BilledFromSchema] = None
@@ -107,44 +108,49 @@ class InvoiceUpdate(BaseModel):
     period: Optional[PeriodSchema] = None
     payment_details: Optional[PaymentDetailsSchema] = None
     signatory: Optional[SignatorySchema] = None
-    notes: Optional[str] = None
     items: Optional[list[InvoiceItemCreate]] = None
 
 
-class InvoiceResponse(InvoiceBase):
-    """Schema for invoice responses."""
+class InvoiceResponse(BaseModel):
+    """Schema for invoice responses (list view - simplified)."""
     id: int
-    billed_from_name: Optional[str] = None
-    billed_from_address: Optional[str] = None
+    invoice_no: str
+    heading: str
+    template: str
+    frequency: str
+    date: date_type
+    school_id: Optional[int] = None
+    billed_from_name: str
     billed_to_name: str
-    billed_to_address: Optional[str] = None
-    period_start: Optional[date_type] = None
-    period_end: Optional[date_type] = None
-    bank_name: Optional[str] = None
-    branch: Optional[str] = None
-    account_number: Optional[str] = None
-    ifsc: Optional[str] = None
-    pan: Optional[str] = None
-    signatory_name: Optional[str] = None
-    signatory_title: Optional[str] = None
     total_amount: Decimal
     created_by: Optional[int] = None
+    created_by_name: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
-    items: list[InvoiceItemResponse] = []
 
     class Config:
         from_attributes = True
 
 
-class InvoiceDetailedResponse(InvoiceResponse):
-    """Detailed schema with computed fields."""
+class InvoiceDetailedResponse(BaseModel):
+    """Detailed schema with all nested objects and items."""
+    id: int
+    invoice_no: str
+    heading: str
+    template: str
+    frequency: str
+    date: date_type
+    school_id: Optional[int] = None
     billed_from: BilledFromSchema
     billed_to: BilledToSchema
     period: PeriodSchema
     payment_details: PaymentDetailsSchema
     signatory: SignatorySchema
-    created_by_name: Optional[str] = None
+    items: list[InvoiceItemResponse] = []
+    total_amount: Decimal
+    created_by: Optional[int] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
 
     @classmethod
     def from_invoice(cls, invoice):
@@ -152,29 +158,11 @@ class InvoiceDetailedResponse(InvoiceResponse):
         return cls(
             id=invoice.id,
             invoice_no=invoice.invoice_no,
+            heading=invoice.heading,
             template=invoice.template,
             frequency=invoice.frequency,
             date=invoice.date,
             school_id=invoice.school_id,
-            billed_from_name=invoice.billed_from_name,
-            billed_from_address=invoice.billed_from_address,
-            billed_to_name=invoice.billed_to_name,
-            billed_to_address=invoice.billed_to_address,
-            period_start=invoice.period_start,
-            period_end=invoice.period_end,
-            bank_name=invoice.bank_name,
-            branch=invoice.branch,
-            account_number=invoice.account_number,
-            ifsc=invoice.ifsc,
-            pan=invoice.pan,
-            signatory_name=invoice.signatory_name,
-            signatory_title=invoice.signatory_title,
-            notes=invoice.notes,
-            total_amount=invoice.total_amount,
-            created_by=invoice.created_by,
-            created_at=invoice.created_at,
-            updated_at=invoice.updated_at,
-            items=[InvoiceItemResponse.model_validate(item) for item in invoice.items],
             billed_from=BilledFromSchema(
                 name=invoice.billed_from_name,
                 address=invoice.billed_from_address
@@ -188,18 +176,25 @@ class InvoiceDetailedResponse(InvoiceResponse):
                 end=invoice.period_end
             ),
             payment_details=PaymentDetailsSchema(
-                bank_name=invoice.bank_name,
-                branch=invoice.branch,
-                account_number=invoice.account_number,
-                ifsc=invoice.ifsc,
-                pan=invoice.pan
+                bank_name=invoice.payment_bank_name,
+                branch=invoice.payment_branch,
+                account_number=invoice.payment_account_number,
+                ifsc=invoice.payment_ifsc,
+                pan=invoice.payment_pan
             ),
             signatory=SignatorySchema(
                 name=invoice.signatory_name,
                 title=invoice.signatory_title
             ),
-            created_by_name=invoice.creator.username if invoice.creator else None
+            items=[InvoiceItemResponse.model_validate(item) for item in invoice.items],
+            total_amount=invoice.total_amount,
+            created_by=invoice.created_by,
+            created_at=invoice.created_at,
+            updated_at=invoice.updated_at
         )
+
+    class Config:
+        from_attributes = True
 
 
 class InvoiceListResponse(BaseModel):
@@ -210,8 +205,9 @@ class InvoiceListResponse(BaseModel):
 
 class InvoiceCreateResponse(BaseModel):
     """Schema for invoice creation response."""
-    invoice_id: int
+    id: int
     invoice_no: str
+    message: str = "Invoice created successfully"
 
 
 # Default/PreCreate Schemas

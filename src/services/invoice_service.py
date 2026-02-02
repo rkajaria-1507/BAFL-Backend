@@ -29,24 +29,24 @@ class InvoiceService:
         # Create invoice model
         invoice = Invoice(
             invoice_no=invoice_data.invoice_no,
+            heading=invoice_data.heading,
             template=invoice_data.template,
             frequency=invoice_data.frequency,
             date=invoice_data.date,
             school_id=invoice_data.school_id,
-            billed_from_name=invoice_data.billed_from.name if invoice_data.billed_from else None,
+            billed_from_name=invoice_data.billed_from.name if invoice_data.billed_from else "BAFL Foundation",
             billed_from_address=invoice_data.billed_from.address if invoice_data.billed_from else None,
             billed_to_name=invoice_data.billed_to.name,
             billed_to_address=invoice_data.billed_to.address,
             period_start=invoice_data.period.start if invoice_data.period else None,
             period_end=invoice_data.period.end if invoice_data.period else None,
-            bank_name=invoice_data.payment_details.bank_name if invoice_data.payment_details else None,
-            branch=invoice_data.payment_details.branch if invoice_data.payment_details else None,
-            account_number=invoice_data.payment_details.account_number if invoice_data.payment_details else None,
-            ifsc=invoice_data.payment_details.ifsc if invoice_data.payment_details else None,
-            pan=invoice_data.payment_details.pan if invoice_data.payment_details else None,
+            payment_bank_name=invoice_data.payment_details.bank_name if invoice_data.payment_details else None,
+            payment_branch=invoice_data.payment_details.branch if invoice_data.payment_details else None,
+            payment_account_number=invoice_data.payment_details.account_number if invoice_data.payment_details else None,
+            payment_ifsc=invoice_data.payment_details.ifsc if invoice_data.payment_details else None,
+            payment_pan=invoice_data.payment_details.pan if invoice_data.payment_details else None,
             signatory_name=invoice_data.signatory.name if invoice_data.signatory else None,
             signatory_title=invoice_data.signatory.title if invoice_data.signatory else None,
-            notes=invoice_data.notes,
             total_amount=total_amount,
             created_by=created_by
         )
@@ -128,6 +128,8 @@ class InvoiceService:
         # Update basic fields
         if invoice_data.invoice_no is not None:
             update_dict["invoice_no"] = invoice_data.invoice_no
+        if invoice_data.heading is not None:
+            update_dict["heading"] = invoice_data.heading
         if invoice_data.template is not None:
             update_dict["template"] = invoice_data.template
         if invoice_data.frequency is not None:
@@ -136,8 +138,6 @@ class InvoiceService:
             update_dict["date"] = invoice_data.date
         if invoice_data.school_id is not None:
             update_dict["school_id"] = invoice_data.school_id
-        if invoice_data.notes is not None:
-            update_dict["notes"] = invoice_data.notes
         
         # Update nested objects
         if invoice_data.billed_from:
@@ -160,15 +160,15 @@ class InvoiceService:
         
         if invoice_data.payment_details:
             if invoice_data.payment_details.bank_name is not None:
-                update_dict["bank_name"] = invoice_data.payment_details.bank_name
+                update_dict["payment_bank_name"] = invoice_data.payment_details.bank_name
             if invoice_data.payment_details.branch is not None:
-                update_dict["branch"] = invoice_data.payment_details.branch
+                update_dict["payment_branch"] = invoice_data.payment_details.branch
             if invoice_data.payment_details.account_number is not None:
-                update_dict["account_number"] = invoice_data.payment_details.account_number
+                update_dict["payment_account_number"] = invoice_data.payment_details.account_number
             if invoice_data.payment_details.ifsc is not None:
-                update_dict["ifsc"] = invoice_data.payment_details.ifsc
+                update_dict["payment_ifsc"] = invoice_data.payment_details.ifsc
             if invoice_data.payment_details.pan is not None:
-                update_dict["pan"] = invoice_data.payment_details.pan
+                update_dict["payment_pan"] = invoice_data.payment_details.pan
         
         if invoice_data.signatory:
             if invoice_data.signatory.name is not None:
@@ -229,6 +229,7 @@ class InvoiceService:
         # Create new invoice
         new_invoice = Invoice(
             invoice_no=next_no,
+            heading=original.heading,
             template=original.template,
             frequency=original.frequency,
             date=date.today(),
@@ -239,14 +240,13 @@ class InvoiceService:
             billed_to_address=original.billed_to_address,
             period_start=original.period_start,
             period_end=original.period_end,
-            bank_name=original.bank_name,
-            branch=original.branch,
-            account_number=original.account_number,
-            ifsc=original.ifsc,
-            pan=original.pan,
+            payment_bank_name=original.payment_bank_name,
+            payment_branch=original.payment_branch,
+            payment_account_number=original.payment_account_number,
+            payment_ifsc=original.payment_ifsc,
+            payment_pan=original.payment_pan,
             signatory_name=original.signatory_name,
             signatory_title=original.signatory_title,
-            notes=original.notes,
             total_amount=original.total_amount,
             created_by=created_by
         )
@@ -276,14 +276,14 @@ class InvoiceService:
         return InvoiceDefaultsResponse(
             billed_from=BilledFromSchema(
                 name="BAFL Foundation",
-                address="Your address here"
+                address="FLC/5 Siddhivinayak Vihars No 72/2E, Hadapsar,\nPune, 411028 Maharashtra, India"
             ),
             payment_details=PaymentDetailsSchema(
-                bank_name="Your Bank Name",
-                branch="Your Branch",
-                account_number="XXXX-XXXX-XXXX",
-                ifsc="XXXXXX",
-                pan="XXXXXXXXXX"
+                bank_name="HDFC Bank",
+                branch="Wanowrie",
+                account_number="50200088770120",
+                ifsc="HDFC0000486",
+                pan="AAMCB1807H"
             ),
             signatory=SignatorySchema(
                 name="Dawny Johnson",

@@ -14,12 +14,13 @@ class Invoice(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     invoice_no = Column(String(50), nullable=False, index=True)
+    heading = Column(String(100), default="Invoice", nullable=False)
     template = Column(String(50), default="archery", nullable=False)
-    frequency = Column(String(20), default="monthly", nullable=False)
+    frequency = Column(String(50), default="monthly", nullable=False)
     date = Column(Date, nullable=False, index=True)
     
     # Billed From
-    billed_from_name = Column(String(255), nullable=True)
+    billed_from_name = Column(String(255), nullable=False)
     billed_from_address = Column(Text, nullable=True)
     
     # Billed To (with optional FK to schools)
@@ -32,11 +33,11 @@ class Invoice(Base):
     period_end = Column(Date, nullable=True)
     
     # Payment Details
-    bank_name = Column(String(255), nullable=True)
-    branch = Column(String(255), nullable=True)
-    account_number = Column(String(100), nullable=True)
-    ifsc = Column(String(50), nullable=True)
-    pan = Column(String(50), nullable=True)
+    payment_bank_name = Column(String(100), nullable=True)
+    payment_branch = Column(String(100), nullable=True)
+    payment_account_number = Column(String(50), nullable=True)
+    payment_ifsc = Column(String(20), nullable=True)
+    payment_pan = Column(String(20), nullable=True)
     
     # Signatory
     signatory_name = Column(String(255), nullable=True)
