@@ -54,6 +54,7 @@ from src.db.models.attendance import (
     StudentAttendance,
     CoachAttendance,
 )
+from src.db.models.invoice import Invoice, InvoiceItem
 
 
 def get_db() -> Generator[Session, None, None]:

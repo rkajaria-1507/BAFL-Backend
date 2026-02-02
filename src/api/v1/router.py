@@ -11,6 +11,7 @@ from src.api.v1.endpoints import (
 	auth,
 	batches,
 	coaches,
+	invoices,
 	permissions,
 	schools,
 	students,
@@ -33,3 +34,4 @@ api_v1_router.include_router(assessments.router)
 api_v1_router.include_router(archery.router)
 api_v1_router.include_router(archery_tournaments.router)
 api_v1_router.include_router(attendance.router)
+api_v1_router.include_router(invoices.router)
